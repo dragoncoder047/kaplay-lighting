@@ -1,0 +1,28 @@
+{
+  "name": "kaplay-hi-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "My super KAPLAY plugin!",
+  "main": "./dist/plugin.umd.cjs",
+  "module": "./dist/plugin.js",
+  "exports": {
+    ".": {
+      "import": "./dist/plugin.js",
+      "require": "./dist/plugin.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "kaplay": "^3001.0.6"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
+}
