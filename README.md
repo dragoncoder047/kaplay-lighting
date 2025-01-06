@@ -8,7 +8,7 @@ publishing plugins.
 
 ## Download template
 
-You can download the template using **"Donwload ZIP"** option in **GitHub**,
+You can download the template using **"Download ZIP"** option in **GitHub**,
 you can also use git:
 
 ```sh
