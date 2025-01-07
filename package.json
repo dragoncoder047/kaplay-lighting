@@ -1,6 +1,6 @@
 {
   "name": "kaplay-hi-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "My super KAPLAY plugin!",
   "main": "./dist/plugin.umd.cjs",
@@ -16,6 +16,10 @@
     "build": "vite build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "keywords": [],
   "author": "",
   "license": "MIT",
