@@ -1,21 +1,22 @@
 # KAPLAY Plugin Template
 
-A minimal [**KAPLAY.js**](https://kaplayjs.com) plugin template for creating and
-publishing plugins.
+A minimal and clean [**KAPLAY.js**](https://kaplayjs.com) plugin template for 
+creating and publishing plugins.
 
-> If you're reading the `kaplay-hi-plugin` on NPM, this is only a demo plugin,
-> it will add a `hi()` function to log `hi`.
+> If you're reading the `kaplay-hi-plugin` on NPM, this is a demo plugin that adds
+> a `hi()` function to log "hi". If you want to create your plugin, 
+> [check the template](https://github.com/kaplayjs/kaplay-plugin-template).
 
 ## Download template
 
-You can download the template using **"Download ZIP"** option in **GitHub**,
-you can also use git:
+You can download the template using **"Download ZIP"** option in **GitHub** or 
+by using `git clone`:
 
 ```sh
 git clone https://github.com/kaplayjs/kaplay-plugin-template
 ```
 
-Navigate to the folder and install dependencies:
+Then navigate to the template folder and install dependencies:
 
 ```sh
 cd kaplay-plugin-template
@@ -24,28 +25,25 @@ npm install
 
 ## Creating your plugin
 
-Your plugin code is on `src/plugin.js`. To understand more about KAPLAY plugins 
+Your plugin code is in `src/plugin.js`. To understand more about KAPLAY plugins, 
 [read this guide](https://kaplayjs.com/guides/plugins/).
 
 ## Testing and building
 
-The `test/game.js` file has a KAPLAY game with your plugin imported, you can test 
-here how your plugin is working.
-
-When you think you have finished your masterpiece, you can build it with:
+`test/game.js` file imports your plugin that you can test with a KAPLAY game. 
+You can then build your masterpiece with:
 
 ```sh
 npm run build
 ```
 
-Then, after selecting a name, you can publish it using:
+After selecting a name, you can publish it using:
 
 ```sh
 npm publish
 ```
 
-For your plugin name, we recommend using `kaplay-` with the plugin name,
-for example:
+We recommend adding kaplay- before plugin names. For example:
 
 - `kaplay-matter`
 - `kaplay-box2d`
