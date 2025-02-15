@@ -1,6 +1,6 @@
 {
   "name": "kaplay-lighting",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "description": "A lighting plugin for your KAPLAY games!",
   "main": "./dist/plugin.umd.cjs",

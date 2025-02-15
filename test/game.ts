@@ -157,7 +157,7 @@ k.scene("main", () => {
     })
 
     k.onUpdate(() => {
-        light.pos = k.mousePos();
-        console.log(k.mousePos());
+        light.pos = k.toWorld(k.mousePos());
+        console.log(light.pos);
     })
 })

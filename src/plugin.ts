@@ -1,9 +1,14 @@
-import { KAPLAYCtx, Vec2, SpriteData, Asset, Color } from "kaplay";
-import type { Comp, GameObj, ShaderComp } from "kaplay";
+import { SpriteData, Asset, Color, Vec2, GameObj } from "kaplay";
+import type { Comp, KAPLAYCtx, ShaderComp } from "kaplay";
 
 export type UVBounds = {
     min: Vec2,
     max: Vec2
+}
+
+export type GlobalLight = {
+    color: Color,
+    intensity: number,
 }
 
 export interface LitShaderOpt {
@@ -20,7 +25,7 @@ export interface LitShaderComp extends Comp {
     rot: number
 }
 
-function LightingPlugin(k: KAPLAYCtx) {
+export default function LightingPlugin(k: KAPLAYCtx) {
     /*
      * PLUGIN OPTIONS
      */
@@ -30,14 +35,14 @@ function LightingPlugin(k: KAPLAYCtx) {
     /** The maximum amount of lights. */
     const MAX_LIGHTS = 200;
     /** Whether or not to introduce the plugin "globally". */
-    const GLOBAL_PLUGIN = true; // DOESN'T WORK
+    //const GLOBAL_PLUGIN = true; // DOESN'T WORK
 
     /*
      * PLUGIN OPTIONS END
      */
 
     /** The game's Global Light. */
-    let GLOBAL_LIGHT = {
+    let GLOBAL_LIGHT: GlobalLight = {
         color: new k.Color(255,255,255),
         intensity: 0.0,
     }
@@ -387,7 +392,7 @@ function LightingPlugin(k: KAPLAYCtx) {
     }
 
     return {
-        Light,
+        Light: Light,
         GLOBAL_LIGHT,
         loadLitShader,
         getUVBounds,
@@ -395,7 +400,5 @@ function LightingPlugin(k: KAPLAYCtx) {
         setGlobalLight,
         getGlobalLight,
         litShader,
-    };
+    }
 }
-
-export default LightingPlugin;
