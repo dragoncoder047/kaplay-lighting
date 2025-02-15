@@ -1,5 +1,5 @@
 import kaplay from "kaplay";
-import LightingPlugin from "kaplay-lighting"
+import LightingPlugin from "../src/plugin"
 
 const k = kaplay({
     plugins: [LightingPlugin]
@@ -10,39 +10,11 @@ k.loadSprite("steel", "test/steel.png");
 k.loadSprite("steel-nm", "test/steel-nm.png");
 
 // load shader
-k.loadShader("test", null, `
-    vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
+k.loadLitShader("test", null, `
+    vec4 lit_frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
         vec4 d = def_frag();
         pos /= vec2(1920., 1080.);
         return vec4(d.x + pos.x, d.y + pos.y, d.z, d.a);
-    }
-`);
-
-k.loadShader("test16", `
-    vec4 vert(vec2 pos, vec2 uv, vec4 color) {
-        return def_vert();
-    }    
-`, `
-
-    vec2 normalizeCoords(vec2 pos) {
-        pos.x *= 1920. / 1080.;
-        return pos;
-    }
-
-    vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
-        pos /= vec2(1920., 1080.);
-        vec2 nPos = normalizeCoords(pos);
-
-        vec2 lightPos = vec2(1.0, 1.0);
-        float lightRadius = 0.5;
-        vec3 lightColor = vec3(1.0,1.0,1.0);
-        float lightStrength = 4.;
-
-        float dist = distance(lightPos.xy, nPos);
-        float sdf = 1.0 - smoothstep(0.0, lightRadius, dist);
-
-        vec3 light = lightColor * sdf * lightStrength;
-        return vec4(def_frag().rgb * light, def_frag().a);
     }
 `);
 
@@ -92,7 +64,7 @@ k.scene("main", () => {
         k.pos(3*k.width()/4, k.height()/2),
         k.sprite("steel"),
         k.anchor("center"),
-        k.litShader("litSprite"),
+        k.litShader("test"),
     ])
 
     let csText = csBlock.add([
@@ -135,6 +107,22 @@ k.scene("main", () => {
         })
     ])
 
+    // test both
+    let bothBlock = k.add([
+        k.pos(k.width()/2, k.height()/2),
+        k.sprite("steel"),
+        k.anchor("center"),
+        k.litShader("test", k.getNormalMapInput("steel", "steel-nm")),
+    ])
+
+    let bothText = bothBlock.add([
+        k.pos(0,-64),
+        k.anchor("center"),
+        k.text("Testing Both", {
+            align: "center",
+        })
+    ])
+
     // test alpha 16
     let speed = 16;
     k.onKeyDown("w", () => {
@@ -162,15 +150,14 @@ k.scene("main", () => {
     /*
     *  LIGHTING
     */
-    let light = new k.Light(2.0, k.width()/2, k.center().scale(100));
+    let light = new k.Light(2.0, 0.5, k.center());
 
     k.setGlobalLight({
-        intensity: 0.4,
+        intensity: 0.5,
     })
 
     k.onUpdate(() => {
         light.pos = k.mousePos();
-
-        //k.usePostEffect("test16");
+        console.log(k.mousePos());
     })
 })
