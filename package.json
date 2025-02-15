@@ -1,8 +1,8 @@
 {
-  "name": "kaplay-hi-plugin",
+  "name": "kaplay-lighting",
   "version": "1.0.2",
   "type": "module",
-  "description": "My super KAPLAY plugin!",
+  "description": "Adds lighting to KAPLAY!",
   "main": "./dist/plugin.umd.cjs",
   "module": "./dist/plugin.js",
   "exports": {
@@ -24,7 +24,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "kaplay": "^3001.0.6"
+    "kaplay": "^4000.0.0-alpha.15"
   },
   "devDependencies": {
     "vite": "^6.0.7"
