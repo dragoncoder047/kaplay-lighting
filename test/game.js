@@ -1,5 +1,5 @@
 import kaplay from "kaplay";
-import LightingPlugin from "kaplay-lighting"
+import LightingPlugin from "../src/plugin"
 
 const k = kaplay({
     plugins: [LightingPlugin]
