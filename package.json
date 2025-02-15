@@ -1,6 +1,6 @@
 {
   "name": "kaplay-lighting",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Adds lighting to KAPLAY!",
   "main": "./dist/plugin.umd.cjs",
