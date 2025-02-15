@@ -1,4 +1,26 @@
-function LightingPlugin(k) {
+import { KAPLAYCtx, Vec2, SpriteData, Asset, Color } from "kaplay";
+import type { Comp, GameObj, ShaderComp } from "kaplay";
+
+export type UVBounds = {
+    min: Vec2,
+    max: Vec2
+}
+
+export interface LitShaderOpt {
+    uniforms?: Record<string, any> | null,
+    tex?: UVBounds | null,
+    nm?: UVBounds | null,
+    rot?: number | null
+}
+
+export interface LitShaderComp extends Comp {
+    uniforms: Record<string, any>,
+    tex?: UVBounds | null,
+    nm?: UVBounds | null,
+    rot: number
+}
+
+function LightingPlugin(k: KAPLAYCtx) {
     /*
      * PLUGIN OPTIONS
      */
@@ -22,18 +44,27 @@ function LightingPlugin(k) {
 
     /**
      * Creates a light that passes its information onto any 'litShader'.
-     * 
-     * @typedef Light
      */
     class Light {
-        static totalLights = 0;
-        static lights = []; // Static array to store all lights
+        /** The total lights active in the game. */
+        static totalLights: number = 0;
+        /** The stored Light objects. */
+        static lights: Light[] = []; // Static array to store all lights
+
+        /** The intensity of the Light. */
+        strength: number;
+        /** The radius of the Light. */
+        radius: number;
+        /** The position of the Light. */
+        pos: Vec2;
+        /** The color of the Light. */
+        color: Color;
 
         constructor(
-            strength = 0.5,
-            radius = 0.5,
-            pos = k.vec2(0),
-            color = k.Color.fromArray([255, 255, 255])
+            strength: number = 0.5,
+            radius: number = 0.5,
+            pos: Vec2 = k.vec2(0),
+            color: Color = k.Color.fromArray([255, 255, 255])
         ) {
             this.strength = strength;
             this.radius = radius;
@@ -47,7 +78,7 @@ function LightingPlugin(k) {
         /**
          * Add back a light to the lights array.
          */
-        static addLight(light) {
+        static addLight(light: Light) {
             Light.lights.push(light);
             Light.totalLights++;
         }
@@ -55,7 +86,7 @@ function LightingPlugin(k) {
         /**
          * Remove a light from the lights array.
          */
-        static removeLight(light) {
+        static removeLight(light: Light) {
             const index = Light.lights.indexOf(light);
             if (index !== -1) {
                 Light.lights.splice(index, 1);
@@ -77,7 +108,7 @@ function LightingPlugin(k) {
          * 
          * @returns An object containing lighting uniforms and extra uniforms added via 'otherUniforms'.
          */
-        static createLightingUniforms(otherUniforms={}) {
+        static createLightingUniforms(otherUniforms: Record<string, any> ={}) {
             const camTransform = k.getCamTransform();
             const aspectRatio = k.width() / k.height();
 
@@ -101,7 +132,7 @@ function LightingPlugin(k) {
                 "u_height": k.height(),
                 "u_aspectRatio": aspectRatio,
                 // convert to Mat4 from Mat23
-                "u_camTransform": new Mat4([
+                "u_camTransform": new k.Mat4([
                     camTransform.a, camTransform.b, 0, 0,
                     camTransform.c, camTransform.d, 0, 0,
                     0, 0, 1, 0,
@@ -124,11 +155,13 @@ function LightingPlugin(k) {
     }
 
     /**
-     * Loads a shader using the lighting module.
+     * Loads a 'litShader' using the lighting module.
      * 
-     * @function loadLitShader
+     * @param name The name of the 'litShader'.
+     * @param vert The vertex shader of the 'litShader'.
+     * @param litFrag The fragment shader of the 'litShader'.
      */
-    function loadLitShader(name, vert, litFrag) {
+    function loadLitShader(name: string, vert: string | null, litFrag: string | null) {
         return k.loadShader(name, vert, `
             #define NUM_LIGHTS ${MAX_LIGHTS}
 
@@ -252,20 +285,25 @@ function LightingPlugin(k) {
     /**
      * Gets the UV coordinates of the given sprite and frame for shader usage.
      * 
-     * @param {string} spriteName The given sprite.
-     * @param {number} frame The frame of the sprite.
+     * @param spriteName The given sprite.
+     * @param frame The frame of the sprite.
      * 
-     * @returns {{min: Vec2, max: Vec2}} A {min, max} for the UV bounds.
+     * @returns A {min, max} for the UV bounds.
      */
-    function getUVBounds(spriteName, frame=0) {
+    function getUVBounds(spriteName: string, frame: number = 0): UVBounds | null {
+        let sprite: Asset<SpriteData> | null = k.getSprite(spriteName);
+        if (sprite == null)
+            return null;
+        if (sprite.data == null)
+            return null;
         return {
             min: k.vec2(
-                k.getSprite(spriteName).data.frames[frame].x,
-                k.getSprite(spriteName).data.frames[frame].y
+                sprite.data.frames[frame].x,
+                sprite.data.frames[frame].y
             ),
             max: k.vec2(
-                k.getSprite(spriteName).data.frames[frame].x + k.getSprite(spriteName).data.frames[frame].w,
-                k.getSprite(spriteName).data.frames[frame].y + k.getSprite(spriteName).data.frames[frame].h
+                sprite.data.frames[frame].x + sprite.data.frames[frame].w,
+                sprite.data.frames[frame].y + sprite.data.frames[frame].h
             )
         }
     }
@@ -273,12 +311,12 @@ function LightingPlugin(k) {
     /**
      * Gets the input for applying normal maps for a 'litShader'.
      * 
-     * @param {string} spriteTexName The sprite used for display.
-     * @param {string} spriteNMName The sprite's normal map.
+     * @param spriteTexName The sprite used for display.
+     * @param spriteNMName The sprite's normal map.
      * 
      * @returns {LitShaderOpt} An input for `litShader()` component options.
      */
-    function getNormalMapInput(spriteTexName, spriteNMName, {rot=0, uniforms={}} = {}) {
+    function getNormalMapInput(spriteTexName: string, spriteNMName: string, {rot=0, uniforms={}} = {}) {
         return {
             uniforms: uniforms,
             tex: getUVBounds(spriteTexName),
@@ -310,36 +348,33 @@ function LightingPlugin(k) {
 
     /**
      * Custom Lit Shader.
-     * 
-     * @returns {LitShaderComp}
      */
-    function litShader(shaderName, {uniforms={}, nm=null, tex=null, rot=0} = {}) {
+    function litShader(shaderName: string, opt: LitShaderOpt): LitShaderComp {
         return {
             id: "litShader",
             require: [],
 
-            add() {
-                this.uniforms = uniforms;
-                this.nm = nm;
-                this.tex = tex;
-                this.rot = rot;
-
+            uniforms: opt.uniforms ?? {},
+            tex: opt.tex ?? null,
+            nm: opt.nm ?? null,
+            rot: opt.rot ?? 0,
+            add(this: GameObj) {
                 // apply normal maps
                 if (this.nm != null && this.tex != null) {
-                    this.uniforms["u_nm_min"] = nm.min;
-                    this.uniforms["u_nm_max"] = nm.max;
-                    this.uniforms["u_tex_min"] = tex.min;
-                    this.uniforms["u_tex_max"] = tex.max;
+                    this.uniforms["u_nm_min"] = this.nm.min;
+                    this.uniforms["u_nm_max"] = this.nm.max;
+                    this.uniforms["u_tex_min"] = this.tex.min;
+                    this.uniforms["u_tex_max"] = this.tex.max;
                     this.uniforms["u_useNormalMap"] = 1;
-                    this.uniforms["u_rotation"] = rot;
+                    this.uniforms["u_rotation"] = this.rot;
                 } else {
                     this.uniforms["u_useNormalMap"] = 0;
                 }
-
-                this.use(k.shader(shaderName), Light.createLightingUniforms(this.uniforms));
+                this.use(k.shader(shaderName, Light.createLightingUniforms(this.uniforms)));
             },
 
-            update() {
+            update(this: GameObj<ShaderComp>) {
+                // @ts-ignore
                 this.uniform = Light.createLightingUniforms(this.uniforms);
             }
         }
@@ -359,57 +394,16 @@ function LightingPlugin(k) {
             }
         `);
     }
-    
-    // defining types LitShaderOpt, LitShaderComp
-    /**
-     * @typedef LitShaderOpt
-     * @type {object}
-     * @property {} uniforms - An object containing uniforms to pass to the 'litShader'. 
-     * @property {Vec2} tex - UV Bounds of the sprite's texture.
-     * @property {Vec2} nm - UV Bounds of the sprite's normal map.
-     * @property {number} rot - The rotation of the object.
-     */
-
-    /**
-     * @typedef LitShaderComp
-     * @type {object}
-     * @property {string} id
-     * @property {string[]} require
-     * @property {() => {}} add
-     * @property {() => {}} update
-     */
-
-    // assign to window for global access?
-    if (GLOBAL_PLUGIN) {
-        window.Light = Light;
-        window.GLOBAL_LIGHT = GLOBAL_LIGHT;
-        window.loadLitShader = loadLitShader;
-        window.getUVBounds = getUVBounds;
-        window.getNormalMapInput = getNormalMapInput;
-        window.setGlobalLight = setGlobalLight;
-        window.getGlobalLight = getGlobalLight;
-        window.litShader = litShader;
-        /**
-         * @type {LitShaderOpt}
-         * @description The type definition for the options object used in 'litShader()'.
-         */
-        window.LitShaderOpt = null;
-    }
 
     return {
-        Light: Light,
-        GLOBAL_LIGHT: GLOBAL_LIGHT,
-        loadLitShader: loadLitShader,
-        getUVBounds: getUVBounds,
-        getNormalMapInput: getNormalMapInput,
-        setGlobalLight: setGlobalLight,
-        getGlobalLight: getGlobalLight,
-        litShader: litShader,
-        /**
-         * @type {LitShaderOpt}
-         * @description The type definition for the options object used in 'litShader()'.
-         */
-        LitShaderOpt: null,
+        Light,
+        GLOBAL_LIGHT,
+        loadLitShader,
+        getUVBounds,
+        getNormalMapInput,
+        setGlobalLight,
+        getGlobalLight,
+        litShader,
     };
 }
 
