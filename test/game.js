@@ -1,8 +1,8 @@
 import kaplay from "kaplay";
-import myPlugin from "../src/plugin";
+import LightingPlugin from "kaplay-lighting"
 
 const k = kaplay({
-    plugins: [myPlugin]
+    plugins: [LightingPlugin]
 });
 
 // load sprites
