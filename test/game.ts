@@ -53,7 +53,7 @@ k.scene("main", () => {
         k.pos(k.width()/2, 64),
         k.anchor("center"),
         k.text("Press 'T' to toggle background being lit.", {
-            align: center
+            align: "center",
         })
     ])
     
@@ -92,7 +92,7 @@ k.scene("main", () => {
     /*
     *  LIGHTING
     */
-    let light = new k.Light(2.0, 0.5, center());
+    let light = new k.Light(2.0, 0.5, k.center());
 
     k.setGlobalLight({
         intensity: 0.4,

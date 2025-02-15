@@ -2,7 +2,7 @@
   "name": "kaplay-lighting",
   "version": "0.1.3",
   "type": "module",
-  "description": "Adds lighting to KAPLAY!",
+  "description": "A lighting plugin for your KAPLAY games!",
   "main": "./dist/plugin.umd.cjs",
   "module": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
@@ -26,11 +26,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^22.10.5",
-    "vite": "^6.0.7",
     "kaplay": "^4000.0.0-alpha.15"
   },
   "devDependencies": {
-    "vite": "^6.0.7"
-  }
+    "@types/node": "^22.10.5",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.4.0"
+  },
+  "packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1"
 }

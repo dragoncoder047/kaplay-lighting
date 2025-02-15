@@ -349,7 +349,7 @@ function LightingPlugin(k: KAPLAYCtx) {
     /**
      * Custom Lit Shader.
      */
-    function litShader(shaderName: string, opt: LitShaderOpt): LitShaderComp {
+    function litShader(shaderName: string, opt: LitShaderOpt = {}): LitShaderComp {
         return {
             id: "litShader",
             require: [],
