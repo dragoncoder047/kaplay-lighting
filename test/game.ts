@@ -8,6 +8,9 @@ const k = kaplay({
 // load sprites
 k.loadSprite("steel", "test/steel.png");
 k.loadSprite("steel-nm", "test/steel-nm.png");
+k.loadSprite("sb", "test/stone-brick-top.png");
+k.loadSprite("sb-nm", "test/stone-brick-top-nm.png");
+
 
 // load shader
 k.loadLitShader("test", null, `
@@ -31,13 +34,15 @@ k.scene("main", () => {
         k.litShader("litSprite"),
     ])
 
-    let ground = k.add([
-        k.pos(0, k.height()),
-        k.anchor("botleft"),
-        k.rect(k.width(), 32),
-        k.color(35, 35, 35),
-        k.litShader("litSprite")
-    ])
+    for (let i = 0; i < k.width()/32; i++) {
+        k.add([
+            k.pos(i * 32, k.height()),
+            k.sprite("sb"),
+            k.scale(2),
+            k.anchor("botleft"),
+            k.litShader("litSprite", k.getNormalMapInput("sb", "sb-nm")),
+        ])
+    }
 
     // test unlit background
     let bgLit = true;
@@ -150,7 +155,7 @@ k.scene("main", () => {
     /*
     *  LIGHTING
     */
-    let light = new k.Light(2.0, 0.5, k.center());
+    let light = new k.Light(1.0, 0.25, k.center());
 
     k.setGlobalLight({
         intensity: 0.5,
