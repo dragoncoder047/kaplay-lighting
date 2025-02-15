@@ -1,5 +1,5 @@
-import { SpriteData, Asset, Color, Vec2, GameObj } from "kaplay";
-import type { Comp, KAPLAYCtx, ShaderComp } from "kaplay";
+import { KAPLAYCtx, SpriteData, Asset, Color, Vec2 } from "kaplay";
+import type { Comp, ShaderComp, GameObj } from "kaplay";
 
 export type UVBounds = {
     min: Vec2,
