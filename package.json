@@ -1,12 +1,14 @@
 {
   "name": "kaplay-lighting",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Adds lighting to KAPLAY!",
   "main": "./dist/plugin.umd.cjs",
   "module": "./dist/plugin.js",
+  "types": "./dist/plugin.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/plugin.d.ts",
       "import": "./dist/plugin.js",
       "require": "./dist/plugin.umd.cjs"
     }
@@ -24,6 +26,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@types/node": "^22.10.5",
+    "vite": "^6.0.7",
     "kaplay": "^4000.0.0-alpha.15"
   },
   "devDependencies": {
