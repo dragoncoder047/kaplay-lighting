@@ -109,8 +109,6 @@ function LightingPlugin(k: KAPLAYCtx) {
          * @returns An object containing lighting uniforms and extra uniforms added via 'otherUniforms'.
          */
         static createLightingUniforms(otherUniforms: Record<string, any> ={}) {
-            const camTransform = k.getCamTransform();
-            const aspectRatio = k.width() / k.height();
 
             // global light color normalized to [0, 1]
             const globalColor = new k.Color(
@@ -124,20 +122,14 @@ function LightingPlugin(k: KAPLAYCtx) {
             const lightRadius = Light.lights.map(light => light.radius);
             const lightPos = Light.lights.map(light => light.pos);
             // light color normalized to [0, 1]
-            const lightColor = Light.lights.map(light => new k.Color(light.color.r / 255, light.color.g / 255, light.color.b / 255));
+            const lightColor = Light.lights.map(light => light.color);
 
             let uniforms = {
                 "u_time": k.time(),
                 "u_width": k.width(),
                 "u_height": k.height(),
-                "u_aspectRatio": aspectRatio,
                 // convert to Mat4 from Mat23
-                "u_camTransform": new k.Mat4([
-                    camTransform.a, camTransform.b, 0, 0,
-                    camTransform.c, camTransform.d, 0, 0,
-                    0, 0, 1, 0,
-                    camTransform.e, camTransform.f, 0, 1
-                ]),
+                "u_camTransform": k.getCamTransform(),
                 "u_globalLightColor": globalColor,
                 "u_globalLightIntensity": globalIntensity,
                 "u_lightStrength": lightStrength,
@@ -247,13 +239,12 @@ function LightingPlugin(k: KAPLAYCtx) {
 
                     float lightStrength = u_lightStrength[i];
                     float lightRadius = u_lightRadius[i];
-                    vec2 lightPos = u_lightPos[i];
-                    vec3 lightColor = u_lightColor[i];
+                    vec2 lightPos = u_lightPos[i] / vec2(u_width, u_height);
+                    vec3 lightColor = u_lightColor[i] / 255.0;
 
-                    vec4 transformedLightPos = u_camTransform * vec4(lightPos.xy, 0.0, 1.0);
-                    transformedLightPos.x = (transformedLightPos.x * 2.0 / u_width - 1.0) * u_aspectRatio;
-                    transformedLightPos.y = 1.0 - (transformedLightPos.y * 2.0 / u_height);
-                    vec2 nPos = normalizeCoords(pos);
+                    lightPos.x *= (u_width/u_height);
+                    vec4 transformedLightPos = vec4(lightPos.xy, 0.0, 1.0);
+                    vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
                     float dist = distance(transformedLightPos.xy, nPos);
                     float sdf = 1.0 - smoothstep(0.0, lightRadius, dist);
 
