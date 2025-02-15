@@ -110,8 +110,6 @@ function LightingPlugin(k: KAPLAYCtx) {
          */
         static createLightingUniforms(otherUniforms: Record<string, any> ={}) {
             const camTransform = k.getCamTransform();
-            const aspectRatio = k.width() / k.height();
-
             // global light color normalized to [0, 1]
             const globalColor = new k.Color(
                 getGlobalLight().color.r/255,
@@ -124,14 +122,12 @@ function LightingPlugin(k: KAPLAYCtx) {
             const lightRadius = Light.lights.map(light => light.radius);
             const lightPos = Light.lights.map(light => light.pos);
             // light color normalized to [0, 1]
-            const lightColor = Light.lights.map(light => new k.Color(light.color.r / 255, light.color.g / 255, light.color.b / 255));
+            const lightColor = Light.lights.map(light => light.color);
 
             let uniforms = {
                 "u_time": k.time(),
                 "u_width": k.width(),
                 "u_height": k.height(),
-                "u_aspectRatio": aspectRatio,
-                // convert to Mat4 from Mat23
                 "u_camTransform": new k.Mat4([
                     camTransform.a, camTransform.b, 0, 0,
                     camTransform.c, camTransform.d, 0, 0,
@@ -192,7 +188,6 @@ function LightingPlugin(k: KAPLAYCtx) {
             uniform float u_rotation; // in radians
 
             vec2 normalizeCoords(vec2 pos) {
-                pos.x *= u_width / u_height;
                 return pos;
             }
 
@@ -238,7 +233,6 @@ function LightingPlugin(k: KAPLAYCtx) {
                 if (u_useNormalMap > 0.0) {
                     vec2 uv_nm = map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max);
                     normal = texture2D(tex, uv_nm).rgb * 2.0 - 1.0;
-
                     normal = rotateNormal(normal, u_rotation);
                 }
 
@@ -250,15 +244,18 @@ function LightingPlugin(k: KAPLAYCtx) {
                     vec2 lightPos = u_lightPos[i];
                     vec3 lightColor = u_lightColor[i];
 
+                    // Transform light position to normalized device coordinates
                     vec4 transformedLightPos = u_camTransform * vec4(lightPos.xy, 0.0, 1.0);
-                    transformedLightPos.x = (transformedLightPos.x * 2.0 / u_width - 1.0) * u_aspectRatio;
-                    transformedLightPos.y = 1.0 - (transformedLightPos.y * 2.0 / u_height);
-                    vec2 nPos = normalizeCoords(pos);
-                    float dist = distance(transformedLightPos.xy, nPos);
+                    transformedLightPos.xy = transformedLightPos.xy / transformedLightPos.w; // Perspective divide
+                    transformedLightPos.x = transformedLightPos.x * 2.0 - 1.0; // Normalize to [-1, 1]
+                    transformedLightPos.y = 1.0 - transformedLightPos.y * 2.0; // Flip y-axis
+
+                    // Calculate distance to light
+                    float dist = distance(transformedLightPos.xy, pos);
                     float sdf = 1.0 - smoothstep(0.0, lightRadius, dist);
 
                     if (u_useNormalMap > 0.0) {
-                        vec3 lightDir = normalize(vec3(transformedLightPos.xy - nPos, 0.0));
+                        vec3 lightDir = normalize(vec3(transformedLightPos.xy - pos, 0.0));
                         float diffuse = max(dot(normal, lightDir), 0.0);
                         sdf *= diffuse;
                     }
