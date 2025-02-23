@@ -1,5 +1,5 @@
 import { KAPLAYCtx, SpriteData, Asset, Color, Vec2 } from "kaplay";
-import type { Comp, ShaderComp, GameObj } from "kaplay";
+import type { Comp, ShaderComp, GameObj, PosComp, ShaderData } from "kaplay";
 
 export type UVBounds = {
     min: Vec2,
@@ -9,6 +9,13 @@ export type UVBounds = {
 export type GlobalLight = {
     color: Color,
     intensity: number,
+}
+
+export interface ILight {
+    strength: number;
+    radius: number;
+    pos: Vec2;
+    color: Color;
 }
 
 export interface LitShaderOpt {
@@ -25,7 +32,45 @@ export interface LitShaderComp extends Comp {
     rot: number
 }
 
-export default function LightingPlugin(k: KAPLAYCtx) {
+export interface LightCompOpt {
+    strength?: number;
+    radius?: number;
+    color?: Color;
+}
+
+export interface LightComp extends Comp {
+    light: ILight | null;
+}
+
+export interface LightStatic {
+    new (
+        strength?: number,
+        radius?: number,
+        pos?: Vec2,
+        color?: Color
+    ): ILight;
+    totalLights: number;
+    lights: ILight[];
+    addLight(light: ILight): void;
+    removeLight(light: ILight): void;
+    clearLights(): void;
+    createLightingUniforms(otherUniforms?: Record<string, any>): Record<string, any>;
+}
+
+export interface LightingPluginReturn {
+    Light: LightStatic;
+    GLOBAL_LIGHT: GlobalLight;
+    loadLitShader: (name: string, vert: string | null, litFrag: string | null) => Asset<ShaderData>;
+    getUVBounds: (spriteName: string, frame?: number) => UVBounds | null;
+    getNormalMapInput: (spriteTexName: string, spriteNMName: string, options?: { rot?: number, uniforms?: Record<string, any> }) => LitShaderOpt;
+    setGlobalLight: (options: { color?: Color, intensity?: number }) => GlobalLight;
+    getGlobalLight: () => GlobalLight;
+    litShader: (shaderName: string, opt?: LitShaderOpt) => LitShaderComp;
+    light: (opt?: LightCompOpt) => LightComp;
+}
+
+
+export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
     /*
      * PLUGIN OPTIONS
      */
@@ -50,7 +95,7 @@ export default function LightingPlugin(k: KAPLAYCtx) {
     /**
      * Creates a light that passes its information onto any 'litShader'.
      */
-    class Light {
+    class Light implements ILight {
         /** The total lights active in the game. */
         static totalLights: number = 0;
         /** The stored Light objects. */
@@ -376,6 +421,42 @@ export default function LightingPlugin(k: KAPLAYCtx) {
         }
     }
 
+    /**
+     * Makes your object contain a light.
+     */
+    function light({strength = 1.0, radius = 0.5, color = new k.Color(255,255,255)}: LightCompOpt = {}): LightComp {
+        return {
+            id: "light",
+            require: ["pos"],
+            light: null,
+            add(this: GameObj<PosComp | LightComp>) {
+                this.light = new Light(
+                    strength,
+                    radius,
+                    this.pos,
+                    color,
+                );
+            },
+            update(this: GameObj<PosComp | LightComp>) {
+                let sp = this.screenPos();
+                let l = this.light;
+                if (sp === null || l === null)
+                    return;
+                l.pos = k.toWorld(sp);
+            },
+            destroy(this: GameObj<PosComp | LightComp>) {
+                let l = this.light;
+                if (l === null)
+                    return;
+                Light.removeLight(l);
+                this.light = null;
+            },
+            inspect(this: GameObj<PosComp | LightComp>) {
+                return "" + this.light;
+            }
+        }
+    }
+
     // LOAD DEFAULTS
     if (LOAD_DEFAULT_SHADERS)
         initializeDefaults();
@@ -392,7 +473,7 @@ export default function LightingPlugin(k: KAPLAYCtx) {
     }
 
     return {
-        Light: Light,
+        Light: Light as unknown as LightStatic,
         GLOBAL_LIGHT,
         loadLitShader,
         getUVBounds,
@@ -400,5 +481,6 @@ export default function LightingPlugin(k: KAPLAYCtx) {
         setGlobalLight,
         getGlobalLight,
         litShader,
+        light,
     }
 }

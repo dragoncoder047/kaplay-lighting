@@ -11,6 +11,65 @@ k.loadSprite("steel-nm", "test/steel-nm.png");
 k.loadSprite("sb", "test/stone-brick-top.png");
 k.loadSprite("sb-nm", "test/stone-brick-top-nm.png");
 
+k.loadSpriteAtlas("test/tilemap.png", {
+    "sb-tl": {
+        x: 0,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+    "sb-tp": {
+        x: 16,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+    "sb-tr": {
+        x: 32,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+});
+
+k.loadSpriteAtlas("test/tilemap-nm.png", {
+    "sb-tl-nm": {
+        x: 0,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+    "sb-tp-nm": {
+        x: 16,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+    "sb-tr-nm": {
+        x: 32,
+        y: 0,
+        width: 16,
+        height: 16,
+    },
+});
+
+k.loadSpriteAtlas("test/torch.png", {
+    "torch": {
+        x: 0,
+        y: 0,
+        width: 16,
+        height: 32,
+    }
+})
+
+k.loadSpriteAtlas("test/torch.png", {
+    "torch-nm": {
+        x: 0,
+        y: 0,
+        width: 16,
+        height: 32,
+    }
+})
 
 // load shader
 k.loadLitShader("test", null, `
@@ -43,6 +102,69 @@ k.scene("main", () => {
             k.litShader("litSprite", k.getNormalMapInput("sb", "sb-nm")),
         ])
     }
+
+    let level = k.addLevel([
+        "[---]",
+    ], {
+        tileHeight: 32,
+        tileWidth: 32,
+        tiles: {
+            "[": () => [
+                k.pos(),
+                k.sprite("sb-tl"),
+                k.area(),
+                k.body({isStatic: true}),
+                k.scale(2),
+                k.litShader("litSprite", k.getNormalMapInput("sb-tl", "sb-tl-nm")),
+            ],
+            "-": () => [
+                k.pos(),
+                k.sprite("sb-tp"),
+                k.area(),
+                k.body({isStatic: true}),
+                k.scale(2),
+                k.litShader("litSprite", k.getNormalMapInput("sb-tp", "sb-tp-nm")),
+            ],
+            "]": () => [
+                k.pos(),
+                k.sprite("sb-tr"),
+                k.area(),
+                k.body({isStatic: true}),
+                k.scale(2),
+                k.litShader("litSprite", k.getNormalMapInput("sb-tr", "sb-tr-nm")),
+            ]
+        }
+    })
+
+    level.pos = k.vec2(k.width()/2-80,k.height()-64);
+
+    let torch = k.add([
+        k.pos(k.width()/2,k.height()-56),
+        k.sprite("torch"),
+        k.anchor("bot"),
+        k.litShader("litSprite"),
+    ])
+
+    let torchlight = torch.add([
+        k.pos(0, -32),
+        k.light({radius: 0.2, color: new k.Color(255,140,0)}),
+        {
+            add() {
+                this.flickInt = 0.1;
+                this.flickSpeed = 30;
+                this.t = 0;
+            },
+            update() {
+                this.t++;
+                if (this.t % this.flickSpeed === 0) {
+                    this.light.strength = 0.9 + (Math.random() - 0.5) * this.flickInt;
+                    this.light.radius = 0.2 + (Math.random() - 0.5) * this.flickInt / 2;
+                }
+            }
+        },
+    ])
+
+    console.log(torchlight)
 
     // test unlit background
     let bgLit = true;
@@ -155,14 +277,13 @@ k.scene("main", () => {
     /*
     *  LIGHTING
     */
-    let light = new k.Light(1.0, 0.25, k.center());
+    let mouseLight = new k.Light(1.0, 0.25, k.center());
 
     k.setGlobalLight({
         intensity: 0.5,
     })
 
     k.onUpdate(() => {
-        light.pos = k.toWorld(k.mousePos());
-        console.log(light.pos);
+        mouseLight.pos = k.toWorld(k.mousePos());
     })
 })
