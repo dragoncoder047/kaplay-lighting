@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepare": "npm run build"
   },
   "files": [
     "dist/",
