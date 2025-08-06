@@ -1,5 +1,11 @@
-import { KAPLAYCtx, SpriteData, Asset, Color, Vec2 } from "kaplay";
-import type { Comp, ShaderComp, GameObj, PosComp, ShaderData } from "kaplay";
+import type { Comp, GameObj, PosComp, ShaderComp, ShaderData, Uniform } from "kaplay";
+import { Asset, Color, KAPLAYCtx, SpriteData, Vec2 } from "kaplay";
+import lightingOnly from "./lighting-only.glsl";
+import litShaderTemplate from "./lit.glsl";
+
+const frag_i = litShaderTemplate.indexOf("vec4 frag");
+const litShaderTemplateBefore = litShaderTemplate.slice(0, frag_i);
+const litShaderTemplateAfter = litShaderTemplate.slice(frag_i);
 
 export type UVBounds = {
     min: Vec2,
@@ -19,14 +25,14 @@ export interface ILight {
 }
 
 export interface LitShaderOpt {
-    uniforms?: Record<string, any> | null,
+    uniforms?: Uniform | (() => Uniform) | null,
     tex?: UVBounds | null,
     nm?: UVBounds | null,
     rot?: number | null
 }
 
 export interface LitShaderComp extends Comp {
-    uniforms: Record<string, any>,
+    uniforms: Uniform | (() => Uniform),
     tex?: UVBounds | null,
     nm?: UVBounds | null,
     rot: number
@@ -43,7 +49,7 @@ export interface LightComp extends Comp {
 }
 
 export interface LightStatic {
-    new (
+    new(
         strength?: number,
         radius?: number,
         pos?: Vec2,
@@ -88,7 +94,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
 
     /** The game's Global Light. */
     let GLOBAL_LIGHT: GlobalLight = {
-        color: new k.Color(255,255,255),
+        color: new k.Color(255, 255, 255),
         intensity: 0.0,
     }
 
@@ -158,13 +164,13 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
          * 
          * @returns An object containing lighting uniforms and extra uniforms added via 'otherUniforms'.
          */
-        static createLightingUniforms(otherUniforms: Record<string, any> ={}) {
+        static createLightingUniforms(otherUniforms: Uniform | (() => Uniform) = {}) {
 
             // global light color normalized to [0, 1]
             const globalColor = new k.Color(
-                getGlobalLight().color.r/255,
-                getGlobalLight().color.g/255,
-                getGlobalLight().color.b/255
+                getGlobalLight().color.r / 255,
+                getGlobalLight().color.g / 255,
+                getGlobalLight().color.b / 255
             );
             const globalIntensity = getGlobalLight().intensity;
 
@@ -190,7 +196,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
             }
 
             // attach these uniforms to the custom uniforms given by `litShader()` component
-            Object.assign(uniforms, otherUniforms);
+            Object.assign(uniforms, typeof otherUniforms === "function" ? otherUniforms() : otherUniforms);
 
             return uniforms;
         }
@@ -204,123 +210,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
      * @param litFrag The fragment shader of the 'litShader'.
      */
     function loadLitShader(name: string, vert: string | null, litFrag: string | null) {
-        return k.loadShader(name, vert, `
-            #define NUM_LIGHTS ${MAX_LIGHTS}
-
-            // generic kaplay information
-            uniform float u_time;
-            uniform float u_width;
-            uniform float u_height;
-            uniform float u_aspectRatio;
-            uniform mat4 u_camTransform;
-
-            // global light
-            uniform vec3 u_globalLightColor;
-            uniform float u_globalLightIntensity;
-
-            // lighting
-            uniform float u_lightStrength[NUM_LIGHTS];
-            uniform float u_lightRadius[NUM_LIGHTS];
-            uniform vec2 u_lightPos[NUM_LIGHTS];
-            uniform vec3 u_lightColor[NUM_LIGHTS];
-            uniform float u_lights;
-
-            // normal maps
-            uniform vec2 u_nm_min;
-            uniform vec2 u_nm_max;
-            uniform vec2 u_tex_min;
-            uniform vec2 u_tex_max;
-            uniform float u_useNormalMap;
-            uniform float u_rotation; // in radians
-
-            vec2 normalizeCoords(vec2 pos) {
-                pos.x *= u_width / u_height;
-                return pos;
-            }
-
-            float map(float n, float min1, float max1, float min2, float max2) {
-                return ((n - min1) / (max1 - min1)) * (max2 - min2) + min2;
-            }
-
-            vec2 map(vec2 n, vec2 min, vec2 max, vec2 min2, vec2 max2) {
-                return vec2(
-                    map(n.x, min.x, max.x, min2.x, max2.x),
-                    map(n.y, min.y, max.y, min2.y, max2.y)
-                );
-            }
-
-            // basically just map but wanted it simpler so
-            vec2 rescaleUV(vec2 uv, vec2 minUV, vec2 maxUV) {
-                return vec2(
-                    map(uv.x, minUV.x, maxUV.x, 0.0, 1.0),
-                    map(uv.y, minUV.y, maxUV.y, 0.0, 1.0)
-                );
-            }
-
-            // rotates the normal "map" to a given angle
-            vec3 rotateNormal(vec3 normal, float angle) {
-                // creates a 2D rot matrix
-                float cosTheta = cos(angle);
-                float sinTheta = sin(angle);
-                mat2 rotationMatrix = mat2(
-                    cosTheta, -sinTheta,
-                    sinTheta,  cosTheta
-                );
-
-                // apply rotation to the normal
-                vec2 rotatedNormalXY = rotationMatrix * normal.xy;
-                return vec3(rotatedNormalXY, normal.z);
-            }
-
-            // lighting shader
-            vec3 calculateLighting(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
-                vec3 totalLight = u_globalLightColor * u_globalLightIntensity;
-
-                vec3 normal = vec3(0.0, 0.0, 1.0);
-                if (u_useNormalMap > 0.0) {
-                    vec2 uv_nm = map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max);
-                    normal = texture2D(tex, uv_nm).rgb * 2.0 - 1.0;
-
-                    normal = rotateNormal(normal, u_rotation);
-                }
-
-                for (int i = 0; i < NUM_LIGHTS; i++) {
-                    if (i >= int(u_lights)) break;
-
-                    float lightStrength = u_lightStrength[i];
-                    float lightRadius = u_lightRadius[i];
-                    vec2 lightPos = u_lightPos[i] / vec2(u_width, u_height);
-                    vec3 lightColor = u_lightColor[i] / 255.0;
-
-                    lightPos.x *= (u_width/u_height);
-                    vec4 transformedLightPos = vec4(lightPos.xy, 0.0, 1.0);
-                    vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
-                    float dist = distance(transformedLightPos.xy, nPos);
-                    float sdf = 1.0 - smoothstep(0.0, lightRadius, dist);
-
-                    if (u_useNormalMap > 0.0) {
-                        vec3 lightDir = normalize(vec3(transformedLightPos.xy - nPos, 0.0));
-                        float diffuse = max(dot(normal, lightDir), 0.0);
-                        sdf *= diffuse;
-                    }
-
-                    totalLight += lightColor * sdf * lightStrength;
-                }
-                return totalLight;
-            }
-
-            // where the custom lit shader code goes
-            ${litFrag}
-
-            // to implement custom litShader code
-            vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
-                vec4 lf = lit_frag(pos, uv, color, tex);
-
-                vec3 lighting = calculateLighting(pos, uv, color, tex);
-
-                return vec4(lf.rgb * lighting, lf.a);
-            }
-        `);
+        return k.loadShader(name, vert, `\n#define NUM_LIGHTS ${MAX_LIGHTS}\n${litShaderTemplateBefore}${litFrag}${litShaderTemplateAfter}`);
     }
 
     /**
@@ -357,7 +247,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
      * 
      * @returns {LitShaderOpt} An input for `litShader()` component options.
      */
-    function getNormalMapInput(spriteTexName: string, spriteNMName: string, {rot=0, uniforms={}} = {}) {
+    function getNormalMapInput(spriteTexName: string, spriteNMName: string, { rot = 0, uniforms = {} } = {}) {
         return {
             uniforms: uniforms,
             tex: getUVBounds(spriteTexName),
@@ -424,7 +314,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
     /**
      * Makes your object contain a light.
      */
-    function light({strength = 1.0, radius = 0.5, color = new k.Color(255,255,255)}: LightCompOpt = {}): LightComp {
+    function light({ strength = 1.0, radius = 0.5, color = new k.Color(255, 255, 255) }: LightCompOpt = {}): LightComp {
         return {
             id: "light",
             require: ["pos"],
@@ -465,11 +355,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
      * Loads the basic shader samples.
      */
     function initializeDefaults() {
-        loadLitShader("litSprite", null, `
-            vec4 lit_frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
-                return def_frag();
-            }
-        `);
+        loadLitShader("litSprite", null, lightingOnly);
     }
 
     return {

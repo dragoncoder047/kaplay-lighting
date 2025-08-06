@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
-import dts from 'vite-plugin-dts'
+import dts from "vite-plugin-dts"
+import glsl from "vite-plugin-glsl";
 
 export default defineConfig({
     build: {
@@ -13,5 +14,10 @@ export default defineConfig({
             external: ["kaplay"],
         },
     },
-    plugins: [dts({ rollupTypes: true, tsconfigPath: "./tsconfig.json" })]
-})
+    plugins: [
+        dts({ rollupTypes: true, tsconfigPath: "./tsconfig.json" }),
+        glsl({
+            minify: true,
+        })
+    ]
+});
