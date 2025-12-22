@@ -91,6 +91,7 @@ k.scene("main", () => {
         k.anchor("center"),
         k.color(20, 20, 20),
         k.litShader("litSprite"),
+        "torchLit"
     ])
 
     for (let i = 0; i < k.width() / 32; i++) {
