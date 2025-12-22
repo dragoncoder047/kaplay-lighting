@@ -1,4 +1,4 @@
-import type { Comp, GameObj, PosComp, ShaderComp, ShaderData, Uniform } from "kaplay";
+import type { Comp, GameObj, PosComp, ShaderComp, ShaderData, Tag, Uniform } from "kaplay";
 import { Asset, Color, KAPLAYCtx, SpriteData, Vec2 } from "kaplay";
 import lightingOnly from "./lighting-only.glsl";
 import litShaderTemplate from "./lit.glsl";
@@ -18,10 +18,18 @@ export type GlobalLight = {
 }
 
 export interface ILight {
+    /** The intensity of the light. */
     strength: number;
+    /** The radius of the light. */
     radius: number;
     pos: Vec2;
+    /** The color of the light. */
     color: Color;
+    /**
+     * If not empty, only objects with at least one
+     * of these tags will be lit by this light.
+     */
+    tags: Tag[];
 }
 
 export interface LitShaderOpt {
@@ -39,9 +47,17 @@ export interface LitShaderComp extends Comp {
 }
 
 export interface LightCompOpt {
+    /** The intensity of the light. */
     strength?: number;
+    /** The radius of the light. */
     radius?: number;
+    /** The color of the light. */
     color?: Color;
+    /**
+     * If not empty, only objects with at least one
+     * of these tags will be lit by this light.
+     */
+    tags?: Tag[];
 }
 
 export interface LightComp extends Comp {
@@ -63,7 +79,7 @@ export interface LightStatic {
     createLightingUniforms(otherUniforms?: Record<string, any>): Record<string, any>;
 }
 
-export interface LightingPluginReturn {
+export interface KAPLAYLightingPlugin {
     Light: LightStatic;
     GLOBAL_LIGHT: GlobalLight;
     loadLitShader: (name: string, vert: string | null, litFrag: string | null) => Asset<ShaderData>;
@@ -72,11 +88,11 @@ export interface LightingPluginReturn {
     setGlobalLight: (options: { color?: Color, intensity?: number }) => GlobalLight;
     getGlobalLight: () => GlobalLight;
     litShader: (shaderName: string, opt?: LitShaderOpt) => LitShaderComp;
-    light: (opt?: LightCompOpt) => LightComp;
+    lightSource: (opt?: LightCompOpt) => LightComp;
 }
 
 
-export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
+export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     /*
      * PLUGIN OPTIONS
      */
@@ -85,8 +101,6 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
     const LOAD_DEFAULT_SHADERS = true;
     /** The maximum amount of lights. */
     const MAX_LIGHTS = 200;
-    /** Whether or not to introduce the plugin "globally". */
-    //const GLOBAL_PLUGIN = true; // DOESN'T WORK
 
     /*
      * PLUGIN OPTIONS END
@@ -107,28 +121,16 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
         /** The stored Light objects. */
         static lights: Light[] = []; // Static array to store all lights
 
-        /** The intensity of the Light. */
-        strength: number;
-        /** The radius of the Light. */
-        radius: number;
-        /** The position of the Light. */
-        pos: Vec2;
-        /** The color of the Light. */
-        color: Color;
 
         constructor(
-            strength: number = 0.5,
-            radius: number = 0.5,
-            pos: Vec2 = k.vec2(0),
-            color: Color = k.Color.fromArray([255, 255, 255])
+            public strength = .5,
+            public radius = .5,
+            public pos = k.vec2(0),
+            public color = k.WHITE,
+            public tags: Tag[] = [],
         ) {
-            this.strength = strength;
-            this.radius = radius;
-            this.pos = pos;
-            this.color = color;
 
-            Light.lights.push(this);
-            Light.totalLights++;
+            Light.addLight(this);
         }
 
         /**
@@ -156,50 +158,6 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
         static clearLights() {
             Light.lights = [];
         }
-
-        /**
-         * Creates uniforms for the lighting post effect shader.
-         * 
-         * @param otherUniforms - Extra uniforms to add to a 'litShader'.
-         * 
-         * @returns An object containing lighting uniforms and extra uniforms added via 'otherUniforms'.
-         */
-        static createLightingUniforms(otherUniforms: Uniform | (() => Uniform) = {}) {
-
-            // global light color normalized to [0, 1]
-            const globalColor = new k.Color(
-                getGlobalLight().color.r / 255,
-                getGlobalLight().color.g / 255,
-                getGlobalLight().color.b / 255
-            );
-            const globalIntensity = getGlobalLight().intensity;
-
-            const lightStrength = Light.lights.map(light => light.strength);
-            const lightRadius = Light.lights.map(light => light.radius);
-            const lightPos = Light.lights.map(light => light.pos);
-            // light color normalized to [0, 1]
-            const lightColor = Light.lights.map(light => light.color);
-
-            let uniforms = {
-                "u_time": k.time(),
-                "u_width": k.width(),
-                "u_height": k.height(),
-                // convert to Mat4 from Mat23
-                "u_camTransform": k.getCamTransform(),
-                "u_globalLightColor": globalColor,
-                "u_globalLightIntensity": globalIntensity,
-                "u_lightStrength": lightStrength,
-                "u_lightRadius": lightRadius,
-                "u_lightPos": lightPos,
-                "u_lightColor": lightColor,
-                "u_lights": Light.lights.length,
-            }
-
-            // attach these uniforms to the custom uniforms given by `litShader()` component
-            Object.assign(uniforms, typeof otherUniforms === "function" ? otherUniforms() : otherUniforms);
-
-            return uniforms;
-        }
     }
 
     /**
@@ -210,7 +168,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
      * @param litFrag The fragment shader of the 'litShader'.
      */
     function loadLitShader(name: string, vert: string | null, litFrag: string | null) {
-        return k.loadShader(name, vert, `\n#define NUM_LIGHTS ${MAX_LIGHTS}\n${litShaderTemplateBefore}${litFrag}${litShaderTemplateAfter}`);
+        return k.loadShader(name, vert, `\n#define MAX_LIGHTS ${MAX_LIGHTS}\n${litShaderTemplateBefore}${litFrag}${litShaderTemplateAfter}`);
     }
 
     /**
@@ -260,8 +218,8 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
      * Sets the global light of the game.
      */
     function setGlobalLight({
-        color = getGlobalLight().color,
-        intensity = getGlobalLight().intensity
+        color = GLOBAL_LIGHT.color,
+        intensity = GLOBAL_LIGHT.intensity
     }) {
         GLOBAL_LIGHT = {
             color: color,
@@ -292,21 +250,59 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
             add(this: GameObj) {
                 // apply normal maps
                 if (this.nm != null && this.tex != null) {
-                    this.uniforms["u_nm_min"] = this.nm.min;
-                    this.uniforms["u_nm_max"] = this.nm.max;
-                    this.uniforms["u_tex_min"] = this.tex.min;
-                    this.uniforms["u_tex_max"] = this.tex.max;
-                    this.uniforms["u_useNormalMap"] = 1;
-                    this.uniforms["u_rotation"] = this.rot;
+                    this.uniforms.u_nm_min = this.nm.min;
+                    this.uniforms.u_nm_max = this.nm.max;
+                    this.uniforms.u_tex_min = this.tex.min;
+                    this.uniforms.u_tex_max = this.tex.max;
+                    this.uniforms.u_useNormalMap = 1;
+                    this.uniforms.u_rotation = this.rot;
                 } else {
-                    this.uniforms["u_useNormalMap"] = 0;
+                    this.uniforms.u_useNormalMap = 0;
                 }
-                this.use(k.shader(shaderName, Light.createLightingUniforms(this.uniforms)));
+                this.use(k.shader(shaderName, {}));
             },
 
-            update(this: GameObj<ShaderComp>) {
-                // @ts-ignore
-                this.uniform = Light.createLightingUniforms(this.uniforms);
+            update(this: GameObj<ShaderComp | LitShaderComp>) {
+                // global light color normalized to [0, 1]
+                const global = getGlobalLight();
+                const globalColor = new k.Color(
+                    global.color.r / 255,
+                    global.color.g / 255,
+                    global.color.b / 255
+                );
+                const globalIntensity = global.intensity;
+
+                const lightStrength: number[] = [];
+                const lightRadius: number[] = [];
+                const lightPos: Vec2[] = [];
+                const lightColor: Color[] = [];
+                // light color normalized to [0, 1]
+                const lights = Light.lights;
+
+                for (let i = 0; i < lights.length; i++) {
+                    const { strength, radius, pos, color, tags } = Light.lights[i]!;
+                    if (tags.length > 0 && !this.is(tags, "or")) continue;
+                    lightStrength.push(strength);
+                    lightRadius.push(radius);
+                    lightPos.push(pos);
+                    lightColor.push(color);
+                }
+
+                // attach these uniforms to the custom uniforms given by `litShader()` component
+                Object.assign(this.uniform!, {
+                    u_time: k.time(),
+                    u_width: k.width(),
+                    u_height: k.height(),
+                    // convert to Mat4 from Mat23
+                    u_camTransform: k.getCamTransform(),
+                    u_globalLightColor: globalColor,
+                    u_globalLightIntensity: globalIntensity,
+                    u_lightStrength: lightStrength,
+                    u_lightRadius: lightRadius,
+                    u_lightPos: lightPos,
+                    u_lightColor: lightColor,
+                    u_lights: lights.length,
+                }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
             }
         }
     }
@@ -314,7 +310,7 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
     /**
      * Makes your object contain a light.
      */
-    function light({ strength = 1.0, radius = 0.5, color = new k.Color(255, 255, 255) }: LightCompOpt = {}): LightComp {
+    function lightSource({ strength = 1.0, radius = 0.5, color = k.WHITE, tags = [] }: LightCompOpt = {}): LightComp {
         return {
             id: "light",
             require: ["pos"],
@@ -325,24 +321,25 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
                     radius,
                     this.pos,
                     color,
+                    tags
                 );
             },
             update(this: GameObj<PosComp | LightComp>) {
-                let sp = this.screenPos();
-                let l = this.light;
+                const sp = this.screenPos();
+                const l = this.light as Light;
                 if (sp === null || l === null)
                     return;
                 l.pos = k.toWorld(sp);
             },
             destroy(this: GameObj<PosComp | LightComp>) {
-                let l = this.light;
+                const l = this.light as Light;
                 if (l === null)
                     return;
                 Light.removeLight(l);
                 this.light = null;
             },
             inspect(this: GameObj<PosComp | LightComp>) {
-                return "" + this.light;
+                return "light: " + String(this.light);
             }
         }
     }
@@ -367,6 +364,6 @@ export default function LightingPlugin(k: KAPLAYCtx): LightingPluginReturn {
         setGlobalLight,
         getGlobalLight,
         litShader,
-        light,
+        lightSource,
     }
 }
