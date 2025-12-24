@@ -51,7 +51,7 @@ vec3 rotateNormal(vec3 normal, float angle) {
 }
 
 // lighting shader
-vec3 calculateLighting(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
+vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity;
 
     vec3 normal = vec3(0., 0., 1.);
@@ -114,7 +114,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
 vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
     vec4 lf = lit_frag(pos, uv, color, tex);
 
-    vec3 lighting = calculateLighting(pos, uv, color, tex);
+    vec3 lighting = calculateLighting(pos, uv, tex);
 
     return vec4(lf.rgb * lighting, lf.a);
 }
