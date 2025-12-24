@@ -361,6 +361,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     this.angle ?? 0,
                     opt.spread,
                     opt.includeTags,
+                    opt.excludeTags,
                 );
             },
             update(this: GameObj<PosComp | LightComp>) {
