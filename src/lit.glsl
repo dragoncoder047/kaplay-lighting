@@ -12,6 +12,9 @@ uniform float u_lightStrength[MAX_LIGHTS];
 uniform float u_lightRadius[MAX_LIGHTS];
 uniform vec2 u_lightPos[MAX_LIGHTS];
 uniform vec3 u_lightColor[MAX_LIGHTS];
+uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for directional lights)
+uniform float u_isDirectional[MAX_LIGHTS]; // 1 = directional light, 0 = point light
+uniform float u_spread[MAX_LIGHTS]; // beam spread angle for directional lights
 uniform float u_lights;
 
 // normal maps
@@ -67,18 +70,40 @@ vec3 calculateLighting(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
         vec3 lightColor = u_lightColor[i] / 255.;
 
         lightPos.x *= (u_width / u_height);
-        vec4 transformedLightPos = vec4(lightPos.xy, 0., 1.);
         vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
-        float dist = distance(transformedLightPos.xy, nPos);
-        float sdf = 1.0 - smoothstep(0., lightRadius, dist);
+        float dist = distance(lightPos, nPos);
 
-        if(u_useNormalMap > 0.) {
-            vec3 lightDir = normalize(vec3(transformedLightPos.xy - nPos, 0.));
-            float diffuse = max(dot(normal, lightDir), 0.);
-            sdf *= diffuse;
+        if(u_isDirectional[i] > 0.) {
+            // Directional light (flashlight beam)
+
+            vec2 dirToPixel = normalize(lightPos - nPos);
+
+            vec3 beamDir = vec3(cos(u_direction[i]), sin(u_direction[i]), 0.);
+
+            float angleDiff = acos(clamp(dot(dirToPixel, beamDir.xy), -1., 1.));
+            float beamFalloff = 1. - smoothstep(0., u_spread[i], angleDiff);
+
+            float distanceFalloff = 1. - smoothstep(0., lightRadius, dist);
+
+            float diffuse = 1.;
+            if(u_useNormalMap > 0.) {
+                diffuse = max(dot(normal, beamDir), 0.);
+            }
+
+            totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
+        } else {
+            // Point light
+
+            float sdf = 1. - smoothstep(0., lightRadius, dist);
+
+            if(u_useNormalMap > 0.) {
+                vec3 lightDir = normalize(vec3(lightPos - nPos, 0.));
+                float diffuse = max(dot(normal, lightDir), 0.);
+                sdf *= diffuse;
+            }
+
+            totalLight += lightColor * sdf * lightStrength;
         }
-
-        totalLight += lightColor * sdf * lightStrength;
     }
     return totalLight;
 }

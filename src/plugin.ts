@@ -1,4 +1,4 @@
-import type { Comp, GameObj, PosComp, ShaderComp, ShaderData, Tag, Uniform } from "kaplay";
+import type { Comp, GameObj, PosComp, RotateComp, ShaderComp, ShaderData, Tag, Uniform } from "kaplay";
 import { Asset, Color, KAPLAYCtx, SpriteData, Vec2 } from "kaplay";
 import lightingOnly from "./lighting-only.glsl";
 import litShaderTemplate from "./lit.glsl";
@@ -18,6 +18,7 @@ export type GlobalLight = {
 }
 
 export interface ILight {
+    directional: boolean;
     /** The intensity of the light. */
     strength: number;
     /** The radius of the light. */
@@ -30,6 +31,8 @@ export interface ILight {
      * of these tags will be lit by this light.
      */
     tags: Tag[];
+    direction: number;
+    spread: number;
 }
 
 export interface LitShaderOpt {
@@ -47,12 +50,16 @@ export interface LitShaderComp extends Comp {
 }
 
 export interface LightCompOpt {
+    /** True if the light is directional. */
+    directional?: boolean;
     /** The intensity of the light. */
     strength?: number;
     /** The radius of the light. */
     radius?: number;
     /** The color of the light. */
     color?: Color;
+    /** The spread of the beam for directional lights, in degrees. */
+    spread?: number;
     /**
      * If not empty, only objects with at least one
      * of these tags will be lit by this light.
@@ -66,12 +73,15 @@ export interface LightComp extends Comp {
 
 export interface LightStatic {
     new(
+        directional?: boolean,
         strength?: number,
         radius?: number,
         pos?: Vec2,
-        color?: Color
+        color?: Color,
+        direction?: number,
+        spread?: number,
+        tags?: Tag[]
     ): ILight;
-    totalLights: number;
     lights: ILight[];
     addLight(light: ILight): void;
     removeLight(light: ILight): void;
@@ -82,13 +92,13 @@ export interface LightStatic {
 export interface KAPLAYLightingPlugin {
     Light: LightStatic;
     GLOBAL_LIGHT: GlobalLight;
-    loadLitShader: (name: string, vert: string | null, litFrag: string | null) => Asset<ShaderData>;
-    getUVBounds: (spriteName: string, frame?: number) => UVBounds | null;
-    getNormalMapInput: (spriteTexName: string, spriteNMName: string, options?: { rot?: number, uniforms?: Record<string, any> }) => LitShaderOpt;
-    setGlobalLight: (options: { color?: Color, intensity?: number }) => GlobalLight;
-    getGlobalLight: () => GlobalLight;
-    litShader: (shaderName: string, opt?: LitShaderOpt) => LitShaderComp;
-    lightSource: (opt?: LightCompOpt) => LightComp;
+    loadLitShader(name: string, vert: string | null, litFrag: string | null): Asset<ShaderData>;
+    getUVBounds(spriteName: string, frame?: number): UVBounds | null;
+    getNormalMapInput(spriteTexName: string, spriteNMName: string, options?: { rot?: number, uniforms?: Record<string, any> }): LitShaderOpt;
+    setGlobalLight(options: { color?: Color, intensity?: number }): GlobalLight;
+    getGlobalLight(): GlobalLight;
+    litShader(shaderName: string, opt?: LitShaderOpt): LitShaderComp;
+    lightSource(opt?: LightCompOpt): LightComp;
 }
 
 
@@ -100,7 +110,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     /** Whether or not to load default shaders. */
     const LOAD_DEFAULT_SHADERS = true;
     /** The maximum amount of lights. */
-    const MAX_LIGHTS = 200;
+    const MAX_LIGHTS = 100;
 
     /*
      * PLUGIN OPTIONS END
@@ -116,17 +126,18 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
      * Creates a light that passes its information onto any 'litShader'.
      */
     class Light implements ILight {
-        /** The total lights active in the game. */
-        static totalLights: number = 0;
         /** The stored Light objects. */
         static lights: Light[] = []; // Static array to store all lights
 
 
         constructor(
+            public directional = false,
             public strength = .5,
             public radius = .5,
             public pos = k.vec2(0),
             public color = k.WHITE,
+            public direction = 0,
+            public spread = 30,
             public tags: Tag[] = [],
         ) {
 
@@ -138,7 +149,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
          */
         static addLight(light: Light) {
             Light.lights.push(light);
-            Light.totalLights++;
         }
 
         /**
@@ -148,7 +158,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             const index = Light.lights.indexOf(light);
             if (index !== -1) {
                 Light.lights.splice(index, 1);
-                Light.totalLights--;
             }
         }
 
@@ -185,15 +194,10 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             return null;
         if (sprite.data == null)
             return null;
+        const q = sprite.data.frames[frame]!;
         return {
-            min: k.vec2(
-                sprite.data.frames[frame].x,
-                sprite.data.frames[frame].y
-            ),
-            max: k.vec2(
-                sprite.data.frames[frame].x + sprite.data.frames[frame].w,
-                sprite.data.frames[frame].y + sprite.data.frames[frame].h
-            )
+            min: k.vec2(q.x, q.y),
+            max: k.vec2(q.x + q.w, q.y + q.h)
         }
     }
 
@@ -203,9 +207,9 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
      * @param spriteTexName The sprite used for display.
      * @param spriteNMName The sprite's normal map.
      * 
-     * @returns {LitShaderOpt} An input for `litShader()` component options.
+     * @returns An input for `litShader()` component options.
      */
-    function getNormalMapInput(spriteTexName: string, spriteNMName: string, { rot = 0, uniforms = {} } = {}) {
+    function getNormalMapInput(spriteTexName: string, spriteNMName: string, { rot = 0, uniforms = {} } = {}): LitShaderOpt {
         return {
             uniforms: uniforms,
             tex: getUVBounds(spriteTexName),
@@ -272,20 +276,26 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 );
                 const globalIntensity = global.intensity;
 
+                const lightIsDirectional: number[] = [];
                 const lightStrength: number[] = [];
                 const lightRadius: number[] = [];
                 const lightPos: Vec2[] = [];
                 const lightColor: Color[] = [];
+                const lightDirection: number[] = [];
+                const lightSpread: number[] = [];
                 // light color normalized to [0, 1]
                 const lights = Light.lights;
 
                 for (let i = 0; i < lights.length; i++) {
-                    const { strength, radius, pos, color, tags } = Light.lights[i]!;
+                    const { directional, strength, radius, pos, color, tags, direction, spread } = Light.lights[i]!;
                     if (tags.length > 0 && !this.is(tags, "or")) continue;
+                    lightIsDirectional.push(directional ? 1 : 0);
                     lightStrength.push(strength);
                     lightRadius.push(radius);
                     lightPos.push(pos);
                     lightColor.push(color);
+                    lightDirection.push(k.deg2rad(direction));
+                    lightSpread.push(k.deg2rad(spread));
                 }
 
                 // attach these uniforms to the custom uniforms given by `litShader()` component
@@ -301,6 +311,9 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_lightRadius: lightRadius,
                     u_lightPos: lightPos,
                     u_lightColor: lightColor,
+                    u_isDirectional: lightIsDirectional,
+                    u_spread: lightSpread,
+                    u_direction: lightDirection,
                     u_lights: lights.length,
                 }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
             }
@@ -310,26 +323,28 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     /**
      * Makes your object contain a light.
      */
-    function lightSource({ strength = 1.0, radius = 0.5, color = k.WHITE, tags = [] }: LightCompOpt = {}): LightComp {
+    function lightSource(opt: LightCompOpt = {}): LightComp {
         return {
             id: "light",
             require: ["pos"],
             light: null,
-            add(this: GameObj<PosComp | LightComp>) {
+            add(this: GameObj<PosComp | LightComp | RotateComp>) {
                 this.light = new Light(
-                    strength,
-                    radius,
+                    opt.directional,
+                    opt.strength,
+                    opt.radius,
                     this.pos,
-                    color,
-                    tags
+                    opt.color,
+                    this.angle ?? 0,
+                    opt.spread,
+                    opt.tags,
                 );
             },
             update(this: GameObj<PosComp | LightComp>) {
-                const sp = this.screenPos();
-                const l = this.light as Light;
-                if (sp === null || l === null)
-                    return;
-                l.pos = k.toWorld(sp);
+                const t = this.transform, l = this.light;
+                if (!l) return;
+                l.pos = t.getTranslation();
+                l.direction = t.getRotation();
             },
             destroy(this: GameObj<PosComp | LightComp>) {
                 const l = this.light as Light;

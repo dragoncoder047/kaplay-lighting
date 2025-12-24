@@ -291,13 +291,16 @@ k.scene("main", () => {
         k.setCamScale(k.vec2(k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min)));
     })
 
-    const mouseLight = new k.Light(1.0, 200, k.center());
+    const mouseLight = new k.Light(false, 1.0, 200, k.center());
+
+    const dirLight = new k.Light(true, 2, 500, k.center(), k.GREEN);
 
     k.setGlobalLight({
         intensity: 0.5,
     })
 
     k.onUpdate(() => {
-        mouseLight.pos = k.toWorld(k.mousePos());
+        dirLight.direction = dirLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos())).angle();
+        dirLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
     })
 })
