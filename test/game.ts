@@ -300,7 +300,9 @@ k.scene("main", () => {
     })
 
     k.onUpdate(() => {
-        dirLight.direction = dirLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos())).angle();
+        const d = dirLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos()));
+        dirLight.direction = d.angle() + 180;
+        dirLight.spread = k.rad2deg(Math.atan2(30, d.len()));
         dirLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
     })
 })
