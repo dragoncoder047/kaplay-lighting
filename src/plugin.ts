@@ -30,7 +30,7 @@ export interface ILight {
      * If not empty, only objects with at least one
      * of these tags will be lit by this light.
      */
-    tags: Tag[];
+    includeTags: Tag[];
     direction: number;
     spread: number;
 }
@@ -64,7 +64,12 @@ export interface LightCompOpt {
      * If not empty, only objects with at least one
      * of these tags will be lit by this light.
      */
-    tags?: Tag[];
+    includeTags?: Tag[];
+    /**
+     * If not empty, objects with at least one
+     * of these tags will not be lit by this light.
+     */
+    excludeTags?: Tag[];
 }
 
 export interface LightComp extends Comp {
@@ -80,7 +85,8 @@ export interface LightStatic {
         color?: Color,
         direction?: number,
         spread?: number,
-        tags?: Tag[]
+        includeTags?: Tag[],
+        excludeTags?: Tag[]
     ): ILight;
     lights: ILight[];
     addLight(light: ILight): void;
@@ -138,7 +144,8 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             public color = k.WHITE,
             public direction = 0,
             public spread = 30,
-            public tags: Tag[] = [],
+            public includeTags: Tag[] = [],
+            public excludeTags: Tag[] = [],
         ) {
 
             Light.addLight(this);
@@ -243,6 +250,13 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
      * Custom Lit Shader.
      */
     function litShader(shaderName: string, opt: LitShaderOpt = {}): LitShaderComp {
+        const lightIsDirectional: number[] = [];
+        const lightStrength: number[] = [];
+        const lightRadius: number[] = [];
+        const lightPos: Vec2[] = [];
+        const lightColor: Color[] = [];
+        const lightDirection: number[] = [];
+        const lightSpread: number[] = [];
         return {
             id: "litShader",
             require: [],
@@ -254,12 +268,14 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             add(this: GameObj) {
                 // apply normal maps
                 if (this.nm != null && this.tex != null) {
-                    this.uniforms.u_nm_min = this.nm.min;
-                    this.uniforms.u_nm_max = this.nm.max;
-                    this.uniforms.u_tex_min = this.tex.min;
-                    this.uniforms.u_tex_max = this.tex.max;
-                    this.uniforms.u_useNormalMap = 1;
-                    this.uniforms.u_rotation = this.rot;
+                    Object.assign(this.uniforms, {
+                        u_nm_min: this.nm.min,
+                        u_nm_max: this.nm.max,
+                        u_tex_min: this.tex.min,
+                        u_tex_max: this.tex.max,
+                        u_useNormalMap: 1,
+                        u_rotation: this.rot,
+                    });
                 } else {
                     this.uniforms.u_useNormalMap = 0;
                 }
@@ -269,34 +285,41 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             update(this: GameObj<ShaderComp | LitShaderComp>) {
                 // global light color normalized to [0, 1]
                 const global = getGlobalLight();
-                const globalColor = new k.Color(
-                    global.color.r / 255,
-                    global.color.g / 255,
-                    global.color.b / 255
-                );
+                const globalColor = global.color;
                 const globalIntensity = global.intensity;
-
-                const lightIsDirectional: number[] = [];
-                const lightStrength: number[] = [];
-                const lightRadius: number[] = [];
-                const lightPos: Vec2[] = [];
-                const lightColor: Color[] = [];
-                const lightDirection: number[] = [];
-                const lightSpread: number[] = [];
                 // light color normalized to [0, 1]
                 const lights = Light.lights;
 
+                let j = 0;
                 for (let i = 0; i < lights.length; i++) {
-                    const { directional, strength, radius, pos, color, tags, direction, spread } = Light.lights[i]!;
-                    if (tags.length > 0 && !this.is(tags, "or")) continue;
-                    lightIsDirectional.push(directional ? 1 : 0);
-                    lightStrength.push(strength);
-                    lightRadius.push(radius);
-                    lightPos.push(pos);
-                    lightColor.push(color);
-                    lightDirection.push(k.deg2rad(direction));
-                    lightSpread.push(k.deg2rad(spread));
+                    const {
+                        directional,
+                        strength,
+                        radius,
+                        pos,
+                        color,
+                        includeTags,
+                        excludeTags,
+                        direction,
+                        spread,
+                    } = Light.lights[i]!;
+                    if (includeTags.length > 0 && !this.is(includeTags, "or")) continue;
+                    if (excludeTags.length > 0 && this.is(excludeTags, "or")) continue;
+                    lightIsDirectional[j] = directional ? 1 : 0;
+                    lightStrength[j] = strength;
+                    lightRadius[j] = radius;
+                    lightPos[j] = pos;
+                    lightColor[j] = color;
+                    lightDirection[j] = k.deg2rad(direction);
+                    lightSpread[j++] = k.deg2rad(spread);
                 }
+                lightIsDirectional.length =
+                    lightStrength.length =
+                    lightRadius.length =
+                    lightPos.length =
+                    lightColor.length =
+                    lightDirection.length =
+                    lightSpread.length = j;
 
                 // attach these uniforms to the custom uniforms given by `litShader()` component
                 Object.assign(this.uniform!, {
@@ -337,7 +360,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     opt.color,
                     this.angle ?? 0,
                     opt.spread,
-                    opt.tags,
+                    opt.includeTags,
                 );
             },
             update(this: GameObj<PosComp | LightComp>) {

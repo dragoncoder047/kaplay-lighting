@@ -149,7 +149,7 @@ k.scene("main", () => {
 
         const torchlight = torch.add([
             k.pos(0, -32),
-            k.lightSource({ radius: 0.2, color, tags }),
+            k.lightSource({ radius: 0.2, color, includeTags: tags }),
             {
                 update(this: GameObj<LightComp>) {
                     this.light!.strength = k.wave(0.5, 2, k.time() * 2 + k.wave(-2, 2, k.time() * 7));

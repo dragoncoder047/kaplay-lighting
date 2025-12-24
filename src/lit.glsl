@@ -52,7 +52,7 @@ vec3 rotateNormal(vec3 normal, float angle) {
 
 // lighting shader
 vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
-    vec3 totalLight = u_globalLightColor * u_globalLightIntensity;
+    vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
 
     vec3 normal = vec3(0., 0., 1.);
     if(u_useNormalMap > 0.) {
