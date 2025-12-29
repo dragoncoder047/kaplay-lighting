@@ -9,12 +9,15 @@ uniform float u_globalLightIntensity;
 
 // lighting
 uniform float u_lightStrength[MAX_LIGHTS];
-uniform float u_lightRadius[MAX_LIGHTS];
+uniform float u_lightNearRadius[MAX_LIGHTS];
+uniform float u_lightFarRadius[MAX_LIGHTS];
 uniform vec2 u_lightPos[MAX_LIGHTS];
 uniform vec3 u_lightColor[MAX_LIGHTS];
 uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for directional lights)
 uniform float u_isDirectional[MAX_LIGHTS]; // 1 = directional light, 0 = point light
-uniform float u_spread[MAX_LIGHTS]; // beam spread angle for directional lights
+uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for directional lights
+uniform float u_widthMin[MAX_LIGHTS];
+uniform float u_widthMax[MAX_LIGHTS];
 uniform float u_lights;
 
 // normal maps
@@ -38,73 +41,70 @@ vec2 map(vec2 n, vec2 min, vec2 max, vec2 min2, vec2 max2) {
     return vec2(map(n.x, min.x, max.x, min2.x, max2.x), map(n.y, min.y, max.y, min2.y, max2.y));
 }
 
-// rotates the normal "map" to a given angle
-vec3 rotateNormal(vec3 normal, float angle) {
-    // creates a 2D rot matrix
-    float cosTheta = cos(angle);
-    float sinTheta = sin(angle);
-    mat2 rotationMatrix = mat2(cosTheta, -sinTheta, sinTheta, cosTheta);
+mat2 rotation(float angle) {
+    float c = cos(angle), s = sin(angle);
+    return mat2(c, -s, s, c);
+}
 
-    // apply rotation to the normal
-    vec2 rotatedNormalXY = rotationMatrix * normal.xy;
-    return vec3(rotatedNormalXY, normal.z);
+vec3 rotateVector(vec3 v, float theta) {
+    return vec3(rotation(theta) * v.xy, v.z);
+}
+
+vec2 rotateVector(vec2 v, vec2 by) {
+    return vec2(dot(v, by * vec2(1., -1.)), dot(v, by.yx));
 }
 
 // lighting shader
 vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
-
-    vec3 normal = vec3(0., 0., 1.);
-    if(u_useNormalMap > 0.) {
-        vec2 uv_nm = map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max);
-        normal = rotateNormal(texture2D(tex, uv_nm).rgb * 2. - 1., u_rotation);
-    }
+    bool hasNMap = u_useNormalMap > 0.;
+    vec3 normal = hasNMap ? rotateVector(texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1., u_rotation) : vec3(0., 0., 1.);
 
     for(int i = 0; i < MAX_LIGHTS; i++) {
         if(i >= int(u_lights))
             break;
 
         float lightStrength = u_lightStrength[i];
-        float lightRadius = u_lightRadius[i] / u_height;
+        float near = u_lightNearRadius[i] / u_height;
+        float far = u_lightFarRadius[i] / u_height;
         vec2 lightPos = u_lightPos[i] / vec2(u_width, u_height);
         vec3 lightColor = u_lightColor[i] / 255.;
 
         lightPos.x *= (u_width / u_height);
         vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
         float dist = distance(lightPos, nPos);
+        float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
+        if(distanceFalloff <= 0.)
+            continue;
 
         if(u_isDirectional[i] > 0.) {
             // Directional light (flashlight beam)
+            float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
 
-            vec2 dirToPixel = normalize(lightPos - nPos);
 
-            vec3 beamDir = vec3(cos(u_direction[i]), sin(u_direction[i]), 0.);
+            vec2 beamDir = vec2(cos(dir), sin(dir));
+            vec2 pixelVector = lightPos - nPos;
+            vec2 rPV = rotation(dir) * pixelVector;
+            float localAngle = atan(rPV.y, rPV.x);
 
-            float angleDiff = acos(clamp(dot(dirToPixel, beamDir.xy), -1., 1.));
-            float beamFalloff = 1. - smoothstep(0., u_spread[i], angleDiff);
-
-            float distanceFalloff = 1. - smoothstep(0., lightRadius, dist);
-
-            float diffuse = 1.;
-            if(u_useNormalMap > 0.) {
-                diffuse = max(dot(normal, beamDir), 0.);
+            if(abs(localAngle) >= sh) {
+                vec2 d = rotation(localAngle < 0. ? -sh : sh) * rPV;
+                float b = d.x < 0. ? length(d) : abs(d.y);
+                beamFalloff = wm == wx ? (b > wx ? 0. : 1.) : 1. - smoothstep(wm, wx, b);
             }
+
+            float diffuse = hasNMap ? max(dot(normal, vec3(beamDir, 0.)), 0.) : 1.;
 
             totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
         } else {
             // Point light
 
-            float sdf = 1. - smoothstep(0., lightRadius, dist);
+            float diffuse = hasNMap ? max(dot(normal, normalize(vec3(lightPos - nPos, 0.))), 0.) : 1.;
 
-            if(u_useNormalMap > 0.) {
-                vec3 lightDir = normalize(vec3(lightPos - nPos, 0.));
-                float diffuse = max(dot(normal, lightDir), 0.);
-                sdf *= diffuse;
-            }
-
-            totalLight += lightColor * sdf * lightStrength;
+            totalLight += lightColor * distanceFalloff * diffuse * lightStrength;
         }
     }
+    totalLight = max(totalLight, vec3(0.));
     return totalLight;
 }
 

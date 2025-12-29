@@ -21,8 +21,10 @@ export interface ILight {
     directional: boolean;
     /** The intensity of the light. */
     strength: number;
-    /** The radius of the light. */
-    radius: number;
+    /** The minimum radius of the light where intensity is 100%. */
+    near: number;
+    /** The maximum radius of the light where intensity drops to 0%. */
+    far: number;
     pos: Vec2;
     /** The color of the light. */
     color: Color;
@@ -33,6 +35,8 @@ export interface ILight {
     includeTags: Tag[];
     direction: number;
     spread: number;
+    widthMin: number;
+    widthMax: number;
 }
 
 export interface LitShaderOpt {
@@ -54,12 +58,16 @@ export interface LightCompOpt {
     directional?: boolean;
     /** The intensity of the light. */
     strength?: number;
-    /** The radius of the light. */
-    radius?: number;
+    /** The minimum radius of the light where intensity is 100%. */
+    near?: number;
+    /** The maximum radius of the light where intensity drops to 0%. */
+    far?: number;
     /** The color of the light. */
     color?: Color;
     /** The spread of the beam for directional lights, in degrees. */
     spread?: number;
+    widthMin?: number;
+    widthMax?: number;
     /**
      * If not empty, only objects with at least one
      * of these tags will be lit by this light.
@@ -80,11 +88,14 @@ export interface LightStatic {
     new(
         directional?: boolean,
         strength?: number,
-        radius?: number,
+        near?: number,
+        far?: number,
         pos?: Vec2,
         color?: Color,
         direction?: number,
         spread?: number,
+        widthMin?: number,
+        widthMax?: number,
         includeTags?: Tag[],
         excludeTags?: Tag[]
     ): ILight;
@@ -134,16 +145,20 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     class Light implements ILight {
         /** The stored Light objects. */
         static lights: Light[] = []; // Static array to store all lights
+        // minimum angular width for beams (degrees)
 
 
         constructor(
             public directional = false,
             public strength = .5,
-            public radius = .5,
+            public near = 0,
+            public far = 100,
             public pos = k.vec2(0),
             public color = k.WHITE,
             public direction = 0,
             public spread = 30,
+            public widthMin = 0,
+            public widthMax = 10,
             public includeTags: Tag[] = [],
             public excludeTags: Tag[] = [],
         ) {
@@ -252,11 +267,14 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     function litShader(shaderName: string, opt: LitShaderOpt = {}): LitShaderComp {
         const lightIsDirectional: number[] = [];
         const lightStrength: number[] = [];
-        const lightRadius: number[] = [];
+        const lightNear: number[] = [];
+        const lightFar: number[] = [];
         const lightPos: Vec2[] = [];
         const lightColor: Color[] = [];
         const lightDirection: number[] = [];
         const lightSpread: number[] = [];
+        const lightWidthMin: number[] = [];
+        const lightWidthMax: number[] = [];
         return {
             id: "litShader",
             require: [],
@@ -295,31 +313,40 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     const {
                         directional,
                         strength,
-                        radius,
+                        near,
+                        far,
                         pos,
                         color,
                         includeTags,
                         excludeTags,
                         direction,
                         spread,
+                        widthMin,
+                        widthMax,
                     } = Light.lights[i]!;
                     if (includeTags.length > 0 && !this.is(includeTags, "or")) continue;
                     if (excludeTags.length > 0 && this.is(excludeTags, "or")) continue;
                     lightIsDirectional[j] = directional ? 1 : 0;
                     lightStrength[j] = strength;
-                    lightRadius[j] = radius;
+                    lightNear[j] = near;
+                    lightFar[j] = far;
                     lightPos[j] = pos;
                     lightColor[j] = color;
                     lightDirection[j] = k.deg2rad(direction);
-                    lightSpread[j++] = k.deg2rad(spread);
+                    lightSpread[j] = k.deg2rad(spread);
+                    lightWidthMin[j] = widthMin;
+                    lightWidthMax[j++] = widthMax;
                 }
                 lightIsDirectional.length =
                     lightStrength.length =
-                    lightRadius.length =
+                    lightNear.length =
+                    lightFar.length =
                     lightPos.length =
                     lightColor.length =
                     lightDirection.length =
-                    lightSpread.length = j;
+                    lightSpread.length =
+                    lightWidthMin.length =
+                    lightWidthMax.length = j;
 
                 // attach these uniforms to the custom uniforms given by `litShader()` component
                 Object.assign(this.uniform!, {
@@ -331,11 +358,14 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_globalLightColor: globalColor,
                     u_globalLightIntensity: globalIntensity,
                     u_lightStrength: lightStrength,
-                    u_lightRadius: lightRadius,
+                    u_lightNearRadius: lightNear,
+                    u_lightFarRadius: lightFar,
                     u_lightPos: lightPos,
                     u_lightColor: lightColor,
                     u_isDirectional: lightIsDirectional,
-                    u_spread: lightSpread,
+                    u_lightSpread: lightSpread,
+                    u_widthMin: lightWidthMin,
+                    u_widthMax: lightWidthMax,
                     u_direction: lightDirection,
                     u_lights: lights.length,
                 }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
@@ -355,11 +385,14 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 this.light = new Light(
                     opt.directional,
                     opt.strength,
-                    opt.radius,
+                    opt.near,
+                    opt.far,
                     this.pos,
                     opt.color,
                     this.angle ?? 0,
                     opt.spread,
+                    opt.widthMin,
+                    opt.widthMax,
                     opt.includeTags,
                     opt.excludeTags,
                 );

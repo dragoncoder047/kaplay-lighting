@@ -2,7 +2,8 @@ import kaplay, { Color, GameObj, Tag, Vec2 } from "kaplay";
 import kaplayLighting, { LightComp } from "../src/plugin";
 
 const k = kaplay({
-    plugins: [kaplayLighting]
+    plugins: [kaplayLighting],
+    pixelDensity: Math.min(2, devicePixelRatio),
 });
 
 // load sprites
@@ -149,11 +150,11 @@ k.scene("main", () => {
 
         const torchlight = torch.add([
             k.pos(0, -32),
-            k.lightSource({ radius: 0.2, color, includeTags: tags }),
+            k.lightSource({ far: 0.2, color, includeTags: tags }),
             {
                 update(this: GameObj<LightComp>) {
                     this.light!.strength = k.wave(0.5, 2, k.time() * 2 + k.wave(-2, 2, k.time() * 7));
-                    this.light!.radius = k.wave(100, 200, k.time() * 3 + k.wave(-.2, .2, k.time() * 8));
+                    this.light!.far = k.wave(100, 200, k.time() * 3 + k.wave(-.2, .2, k.time() * 8));
                 }
             },
         ])
@@ -291,9 +292,9 @@ k.scene("main", () => {
         k.setCamScale(k.vec2(k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min)));
     })
 
-    const mouseLight = new k.Light(false, 1.0, 200, k.center());
+    const mouseLight = new k.Light(false, 1.0, 50, 200, k.center());
 
-    const dirLight = new k.Light(true, 2, 500, k.center(), k.GREEN);
+    const dirLight = new k.Light(true, 2, 50, 500, k.center(), k.GREEN, 0, undefined, 0, 20);
 
     k.setGlobalLight({
         intensity: 0.5,
