@@ -127,7 +127,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
     /** Whether or not to load default shaders. */
     const LOAD_DEFAULT_SHADERS = true;
     /** The maximum amount of lights. */
-    const MAX_LIGHTS = 100;
+    const MAX_LIGHTS = 64;
 
     /*
      * PLUGIN OPTIONS END
