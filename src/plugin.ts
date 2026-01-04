@@ -300,7 +300,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 this.use(k.shader(shaderName, {}));
             },
 
-            update(this: GameObj<ShaderComp | LitShaderComp>) {
+            update(this: GameObj<ShaderComp | LitShaderComp | RotateComp>) {
                 // global light color normalized to [0, 1]
                 const global = getGlobalLight();
                 const globalColor = global.color;
@@ -368,6 +368,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_widthMax: lightWidthMax,
                     u_direction: lightDirection,
                     u_lights: lights.length,
+                    u_rotation: k.deg2rad((this.angle ?? 0) + this.rot),
                 }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
             }
         }
