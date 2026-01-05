@@ -292,7 +292,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                         u_tex_min: this.tex.min,
                         u_tex_max: this.tex.max,
                         u_useNormalMap: 1,
-                        u_rotation: this.rot,
+                        u_rotation: k.deg2rad(this.rot),
                     });
                 } else {
                     this.uniforms.u_useNormalMap = 0;

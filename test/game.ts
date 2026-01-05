@@ -1,4 +1,4 @@
-import kaplay, { Color, GameObj, Tag, Vec2 } from "kaplay";
+import kaplay, { Color, GameObj, RotateComp, Tag, Vec2 } from "kaplay";
 import kaplayLighting, { LightComp } from "../src/plugin";
 
 const k = kaplay({
@@ -140,7 +140,7 @@ k.scene("main", () => {
 
     level.pos = k.vec2(k.width() / 2 - 80, k.height() - 64);
 
-    function addTorch(pos: Vec2, color: Color, tags: Tag[] = []) {
+    function addTorch(pos: Vec2, color = k.WHITE, tags: Tag[] = []) {
         const torch = k.add([
             k.pos(pos),
             k.sprite("torch"),
@@ -160,6 +160,8 @@ k.scene("main", () => {
         ])
 
         console.log(torchlight)
+
+        return torch;
     }
 
     addTorch(k.vec2(k.width() / 2, k.height() - 56), k.rgb(255, 140, 0));
@@ -269,6 +271,20 @@ k.scene("main", () => {
 
     addTorch(k.vec2(k.width() / 4, k.height() - 24), k.rgb(0, 149, 255), ["torchLit"]);
 
+    const torch1 = addTorch(k.vec2(3 * k.width() / 4 + 20, 2 * k.height() / 3));
+    const torch2 = addTorch(k.vec2(3 * k.width() / 4, 2 * k.height() / 3));
+
+    torch2.use(k.rotate(0));
+    torch2.anchor = "center";
+    torch1.children[0].destroy()
+    torch2.children[0].destroy()
+    torch2.use({
+        update(this: GameObj<RotateComp>) {
+            this.angle += 200 * k.dt();
+        }
+    });
+    torch2.use(k.area())
+
     // test alpha 16
     k.onKeyDown("w", () => {
         k.setCamPos(k.getCamPos().add(0, -SPEED * k.dt()));
@@ -294,7 +310,7 @@ k.scene("main", () => {
 
     const mouseLight = new k.Light(false, 1.0, 50, 200, k.center());
 
-    const dirLight = new k.Light(true, 2, 50, 500, k.center(), k.GREEN, 0, undefined, 0, 20);
+    const dirLight = new k.Light(true, 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
 
     k.setGlobalLight({
         intensity: 0.5,
@@ -304,6 +320,6 @@ k.scene("main", () => {
         const d = dirLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos()));
         dirLight.direction = d.angle() + 180;
         dirLight.spread = k.rad2deg(Math.atan2(100, d.len()));
-        dirLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
+        // dirLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
     })
 })

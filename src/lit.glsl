@@ -50,10 +50,6 @@ vec3 rotateVector(vec3 v, float theta) {
     return vec3(rotation(theta) * v.xy, v.z);
 }
 
-vec2 rotateVector(vec2 v, vec2 by) {
-    return vec2(dot(v, by * vec2(1., -1.)), dot(v, by.yx));
-}
-
 // lighting shader
 vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
@@ -74,13 +70,13 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
         vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
         float dist = distance(lightPos, nPos);
         float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
+        float diffuse = hasNMap ? max(dot(normal, normalize(vec3(lightPos - nPos, 0.))), 0.) : 1.;
         if(distanceFalloff <= 0.)
             continue;
 
         if(u_isDirectional[i] > 0.) {
             // Directional light (flashlight beam)
             float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
-
 
             vec2 beamDir = vec2(cos(dir), sin(dir));
             vec2 pixelVector = lightPos - nPos;
@@ -93,13 +89,9 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
                 beamFalloff = wm == wx ? (b > wx ? 0. : 1.) : 1. - smoothstep(wm, wx, b);
             }
 
-            float diffuse = hasNMap ? max(dot(normal, vec3(beamDir, 0.)), 0.) : 1.;
-
             totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
         } else {
             // Point light
-
-            float diffuse = hasNMap ? max(dot(normal, normalize(vec3(lightPos - nPos, 0.))), 0.) : 1.;
 
             totalLight += lightColor * distanceFalloff * diffuse * lightStrength;
         }
