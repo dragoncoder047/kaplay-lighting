@@ -6,8 +6,9 @@ A lighting plugin for your KAPLAY games!
 
 - Basic Light Types:
     - Global light (lights the whole scene evenly)
-    - Point light
-    - Directional light (like a flashlight or laser)
+    - Point light (like a candle)
+    - Spot light (like a flashlight or laser)
+    - Directional light (like the Sun)
 - Normal Map Support
 - Lit Shaders that apply custom shader code combined with the lighting effect.
 

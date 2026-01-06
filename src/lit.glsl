@@ -14,7 +14,7 @@ uniform float u_lightFarRadius[MAX_LIGHTS];
 uniform vec2 u_lightPos[MAX_LIGHTS];
 uniform vec3 u_lightColor[MAX_LIGHTS];
 uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for directional lights)
-uniform float u_isDirectional[MAX_LIGHTS]; // 1 = directional light, 0 = point light
+uniform float u_lightType[MAX_LIGHTS]; // 1 = directional light, 0 = point light
 uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for directional lights
 uniform float u_widthMin[MAX_LIGHTS];
 uniform float u_widthMax[MAX_LIGHTS];
@@ -76,8 +76,11 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
         if(distanceFalloff <= 0.)
             continue;
 
-        if(u_isDirectional[i] > 0.) {
-            // Directional light (flashlight beam)
+        if(u_lightType[i] > 1.) {
+            // Directional light
+            totalLight += lightColor * diffuse * lightStrength;
+        } else if(u_lightType[i] > 0.) {
+            // Spot light (flashlight beam)
             float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
 
             vec2 rPV = rotation(dir) * pixelVector;

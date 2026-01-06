@@ -228,14 +228,19 @@ k.scene("main", () => {
 
     title(bothBlock, "Shader\n&\nNormal Map")
 
-    // test tags
+    // test tags & spinning
     const tagsBlock = k.add([
         k.pos(1 * k.width() / 5, k.height() / 2),
         k.sprite("steel"),
         k.anchor("center"),
+        k.rotate(),
         k.litShader("litSprite", k.getNormalMapInput("steel", "steel-nm")),
         "torchLit"
     ])
+
+    tagsBlock.onUpdate(() => {
+        tagsBlock.angle += 200 * k.dt();
+    })
 
     title(tagsBlock, "Tags");
 
@@ -308,9 +313,9 @@ k.scene("main", () => {
         k.setCamScale(k.vec2(k.clamp(k.getCamScale().y - d.y / 1000, 1 / max, min)));
     })
 
-    const mouseLight = new k.Light(false, 1.0, 50, 200, k.center());
+    const mouseLight = new k.Light("point", 1.0, 50, 200, k.center());
 
-    const dirLight = new k.Light(true, 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
+    const dirLight = new k.Light("spot", 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
 
     k.setGlobalLight({
         intensity: 0.5,

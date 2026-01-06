@@ -17,8 +17,10 @@ export type GlobalLight = {
     intensity: number,
 }
 
+export type LightType = "point" | "spot" | "directional";
+
 export interface ILight {
-    directional: boolean;
+    type: LightType;
     /** The intensity of the light. */
     strength: number;
     /** The minimum radius of the light where intensity is 100%. */
@@ -54,8 +56,7 @@ export interface LitShaderComp extends Comp {
 }
 
 export interface LightCompOpt {
-    /** True if the light is directional. */
-    directional?: boolean;
+    type?: LightType;
     /** The intensity of the light. */
     strength?: number;
     /** The minimum radius of the light where intensity is 100%. */
@@ -86,7 +87,7 @@ export interface LightComp extends Comp {
 
 export interface LightStatic {
     new(
-        directional?: boolean,
+        type: LightType,
         strength?: number,
         near?: number,
         far?: number,
@@ -144,12 +145,11 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
      */
     class Light implements ILight {
         /** The stored Light objects. */
-        static lights: Light[] = []; // Static array to store all lights
-        // minimum angular width for beams (degrees)
+        static lights: Light[] = [];
 
 
         constructor(
-            public directional = false,
+            public type: LightType = "point",
             public strength = .5,
             public near = 0,
             public far = 100,
@@ -265,7 +265,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
      * Custom Lit Shader.
      */
     function litShader(shaderName: string, opt: LitShaderOpt = {}): LitShaderComp {
-        const lightIsDirectional: number[] = [];
+        const lightType: (0 | 1 | 2)[] = [];
         const lightStrength: number[] = [];
         const lightNear: number[] = [];
         const lightFar: number[] = [];
@@ -310,7 +310,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 let j = 0;
                 for (let i = 0; i < lights.length; i++) {
                     const {
-                        directional,
+                        type,
                         strength,
                         near,
                         far,
@@ -325,7 +325,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     } = Light.lights[i]!;
                     if (includeTags.length > 0 && !this.is(includeTags, "or")) continue;
                     if (excludeTags.length > 0 && this.is(excludeTags, "or")) continue;
-                    lightIsDirectional[j] = directional ? 1 : 0;
+                    lightType[j] = type === "spot" ? 1 : type === "directional" ? 2 : 0;
                     lightStrength[j] = strength;
                     lightNear[j] = near;
                     lightFar[j] = far;
@@ -336,7 +336,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     lightWidthMin[j] = widthMin;
                     lightWidthMax[j++] = widthMax;
                 }
-                lightIsDirectional.length =
+                lightType.length =
                     lightStrength.length =
                     lightNear.length =
                     lightFar.length =
@@ -361,7 +361,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_lightFarRadius: lightFar,
                     u_lightPos: lightPos,
                     u_lightColor: lightColor,
-                    u_isDirectional: lightIsDirectional,
+                    u_lightType: lightType,
                     u_lightSpread: lightSpread,
                     u_widthMin: lightWidthMin,
                     u_widthMax: lightWidthMax,
@@ -383,7 +383,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             light: null,
             add(this: GameObj<PosComp | LightComp | RotateComp>) {
                 this.light = new Light(
-                    opt.directional,
+                    opt.type,
                     opt.strength,
                     opt.near,
                     opt.far,
