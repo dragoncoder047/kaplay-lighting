@@ -19,6 +19,7 @@ uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for directional li
 uniform float u_widthMin[MAX_LIGHTS];
 uniform float u_widthMax[MAX_LIGHTS];
 uniform float u_lights;
+uniform mat4 u_transformation;
 
 // normal maps
 uniform vec2 u_nm_min;
@@ -26,7 +27,6 @@ uniform vec2 u_nm_max;
 uniform vec2 u_tex_min;
 uniform vec2 u_tex_max;
 uniform float u_useNormalMap;
-uniform float u_rotation; // in radians
 
 vec2 normalizeCoords(vec2 pos) {
     pos.x *= u_width / u_height;
@@ -54,7 +54,7 @@ vec3 rotateVector(vec3 v, float theta) {
 vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
     bool hasNMap = u_useNormalMap > 0.;
-    vec3 normal = hasNMap ? rotateVector(texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1., u_rotation) : vec3(0., 0., 1.);
+    vec3 normal = hasNMap ? texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
 
     for(int i = 0; i < MAX_LIGHTS; i++) {
         if(i >= int(u_lights))
@@ -70,7 +70,9 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
         vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
         float dist = distance(lightPos, nPos);
         float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
-        float diffuse = hasNMap ? max(dot(normal, normalize(vec3(lightPos - nPos, 0.))), 0.) : 1.;
+        // TODO: transform this instead of transforming the normal
+        vec2 pixelVector = (u_transformation * vec4(lightPos - nPos, 0., 0.)).xy;
+        float diffuse = hasNMap ? max(dot(normal, normalize(vec3(pixelVector, 0.))), 0.) : 1.;
         if(distanceFalloff <= 0.)
             continue;
 
@@ -78,8 +80,6 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
             // Directional light (flashlight beam)
             float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
 
-            vec2 beamDir = vec2(cos(dir), sin(dir));
-            vec2 pixelVector = lightPos - nPos;
             vec2 rPV = rotation(dir) * pixelVector;
             float localAngle = atan(rPV.y, rPV.x);
 

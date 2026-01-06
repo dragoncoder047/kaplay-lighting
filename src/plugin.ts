@@ -292,7 +292,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                         u_tex_min: this.tex.min,
                         u_tex_max: this.tex.max,
                         u_useNormalMap: 1,
-                        u_rotation: k.deg2rad(this.rot),
                     });
                 } else {
                     this.uniforms.u_useNormalMap = 0;
@@ -368,7 +367,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_widthMax: lightWidthMax,
                     u_direction: lightDirection,
                     u_lights: lights.length,
-                    u_rotation: k.deg2rad((this.angle ?? 0) + this.rot),
+                    u_transformation: this.transform,
                 }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
             }
         }
