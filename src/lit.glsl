@@ -14,12 +14,11 @@ uniform float u_lightFarRadius[MAX_LIGHTS];
 uniform vec2 u_lightPos[MAX_LIGHTS];
 uniform vec3 u_lightColor[MAX_LIGHTS];
 uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for directional lights)
-uniform float u_lightType[MAX_LIGHTS]; // 1 = directional light, 0 = point light
+uniform float u_lightType[MAX_LIGHTS]; // 1 = spot light, 0 = point light, 2 = directional light
 uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for directional lights
 uniform float u_widthMin[MAX_LIGHTS];
 uniform float u_widthMax[MAX_LIGHTS];
 uniform float u_lights;
-uniform mat4 u_transformation;
 
 // normal maps
 uniform vec2 u_nm_min;
@@ -27,6 +26,7 @@ uniform vec2 u_nm_max;
 uniform vec2 u_tex_min;
 uniform vec2 u_tex_max;
 uniform float u_useNormalMap;
+uniform float u_selfInverse[6]; // Use 6 floats and convert the mat2x3 to a mat4 in the shader
 
 vec2 normalizeCoords(vec2 pos) {
     pos.x *= u_width / u_height;
@@ -46,8 +46,9 @@ mat2 rotation(float angle) {
     return mat2(c, -s, s, c);
 }
 
-vec3 rotateVector(vec3 v, float theta) {
-    return vec3(rotation(theta) * v.xy, v.z);
+mat4 transform4() {
+    float a = u_selfInverse[0], b = u_selfInverse[1], c = u_selfInverse[2], d = u_selfInverse[3], e = u_selfInverse[4], f = u_selfInverse[5];
+    return mat4(a, b, 0., 0., c, d, 0., 0., 0., 0., 1., 0., e, f, 0., 1.);
 }
 
 // lighting shader
@@ -55,7 +56,8 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
     bool hasNMap = u_useNormalMap > 0.;
     vec3 normal = hasNMap ? texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
-
+    if(hasNMap)
+        normal = vec3((transform4() * vec4(normal.xy, 0, 0.)).xy, normal.z);
     for(int i = 0; i < MAX_LIGHTS; i++) {
         if(i >= int(u_lights))
             break;
@@ -66,37 +68,40 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
         vec2 lightPos = u_lightPos[i] / vec2(u_width, u_height);
         vec3 lightColor = u_lightColor[i] / 255.;
 
-        lightPos.x *= (u_width / u_height);
-        vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
-        float dist = distance(lightPos, nPos);
-        float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
-        // TODO: transform this instead of transforming the normal
-        vec2 pixelVector = (u_transformation * vec4(lightPos - nPos, 0., 0.)).xy;
-        float diffuse = hasNMap ? max(dot(normal, normalize(vec3(pixelVector, 0.))), 0.) : 1.;
-        if(distanceFalloff <= 0.)
-            continue;
-
         if(u_lightType[i] > 1.) {
             // Directional light
+            float diffuse = hasNMap ? max((rotation(u_direction[i]) * normal.xy).x, 0.) : 1.;
             totalLight += lightColor * diffuse * lightStrength;
-        } else if(u_lightType[i] > 0.) {
-            // Spot light (flashlight beam)
-            float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
-
-            vec2 rPV = rotation(dir) * pixelVector;
-            float localAngle = atan(rPV.y, rPV.x);
-
-            if(abs(localAngle) >= sh) {
-                vec2 d = rotation(localAngle < 0. ? -sh : sh) * rPV;
-                float b = d.x < 0. ? length(d) : abs(d.y);
-                beamFalloff = wm == wx ? (b > wx ? 0. : 1.) : 1. - smoothstep(wm, wx, b);
-            }
-
-            totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
         } else {
+            lightPos.x *= (u_width / u_height);
+            vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
+            float dist = distance(lightPos, nPos);
+            float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
+            if(distanceFalloff <= 0.)
+                continue;
+
+            vec2 pixelVector = lightPos - nPos;
+            float diffuse = hasNMap ? max(dot(normal, normalize(vec3(pixelVector, 0.))), 0.) : 1.;
+
+            if(u_lightType[i] > 0.) {
+            // Spot light (flashlight beam)
+                float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
+
+                vec2 rPV = rotation(dir) * pixelVector;
+                float localAngle = atan(rPV.y, rPV.x);
+
+                if(abs(localAngle) >= sh) {
+                    vec2 d = rotation(localAngle < 0. ? -sh : sh) * rPV;
+                    float b = d.x < 0. ? length(d) : abs(d.y);
+                    beamFalloff = wm == wx ? (b > wx ? 0. : 1.) : 1. - smoothstep(wm, wx, b);
+                }
+
+                totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
+            } else {
             // Point light
 
-            totalLight += lightColor * distanceFalloff * diffuse * lightStrength;
+                totalLight += lightColor * distanceFalloff * diffuse * lightStrength;
+            }
         }
     }
     totalLight = max(totalLight, vec3(0.));
@@ -107,9 +112,5 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
 
 // to implement custom litShader code
 vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
-    vec4 lf = lit_frag(pos, uv, color, tex);
-
-    vec3 lighting = calculateLighting(pos, uv, tex);
-
-    return vec4(lf.rgb * lighting, lf.a);
+    return lit_frag(pos, uv, color, tex) * vec4(calculateLighting(pos, uv, tex), 1.);
 }

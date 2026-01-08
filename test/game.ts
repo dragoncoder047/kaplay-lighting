@@ -315,16 +315,16 @@ k.scene("main", () => {
 
     const mouseLight = new k.Light("point", 1.0, 50, 200, k.center());
 
-    const dirLight = new k.Light("spot", 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
+    const spotLight = new k.Light("spot", 2, 50, 500, k.center(), k.WHITE, 0, undefined, 0, 20);
 
     k.setGlobalLight({
         intensity: 0.5,
     })
 
     k.onUpdate(() => {
-        const d = dirLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos()));
-        dirLight.direction = d.angle() + 180;
-        dirLight.spread = k.rad2deg(Math.atan2(100, d.len()));
-        // dirLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
+        const d = spotLight.pos.sub(mouseLight.pos = k.toWorld(k.mousePos()));
+        spotLight.direction = d.angle() + 180;
+        spotLight.spread = k.rad2deg(Math.atan2(100, d.len()));
+        // spotLight.color = k.Color.fromHSL((k.time() / 3) % 1, 1, .5);
     })
 })

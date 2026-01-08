@@ -275,6 +275,8 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
         const lightSpread: number[] = [];
         const lightWidthMin: number[] = [];
         const lightWidthMax: number[] = [];
+
+        const selfTransform: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
         return {
             id: "litShader",
             require: [],
@@ -347,6 +349,14 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     lightWidthMin.length =
                     lightWidthMax.length = j;
 
+                const t = this.transform;
+                selfTransform[0] = t.a;
+                selfTransform[1] = t.b;
+                selfTransform[2] = t.c;
+                selfTransform[3] = t.d;
+                selfTransform[4] = t.e;
+                selfTransform[5] = t.f;
+
                 // attach these uniforms to the custom uniforms given by `litShader()` component
                 Object.assign(this.uniform!, {
                     u_time: k.time(),
@@ -367,7 +377,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_widthMax: lightWidthMax,
                     u_direction: lightDirection,
                     u_lights: lights.length,
-                    u_transformation: this.transform,
+                    u_selfInverse: selfTransform,
                 }, typeof this.uniforms === "function" ? this.uniforms() : this.uniforms);
             }
         }
