@@ -26,7 +26,7 @@ uniform vec2 u_nm_max;
 uniform vec2 u_tex_min;
 uniform vec2 u_tex_max;
 uniform float u_useNormalMap;
-uniform float u_selfInverse[6]; // Use 6 floats and convert the mat2x3 to a mat4 in the shader
+uniform float u_selfTransform[4]; // Use 6 floats and convert the mat2x3 to a mat4 in the shader
 
 vec2 normalizeCoords(vec2 pos) {
     pos.x *= u_width / u_height;
@@ -47,8 +47,8 @@ mat2 rotation(float angle) {
 }
 
 mat4 transform4() {
-    float a = u_selfInverse[0], b = u_selfInverse[1], c = u_selfInverse[2], d = u_selfInverse[3], e = u_selfInverse[4], f = u_selfInverse[5];
-    return mat4(a, b, 0., 0., c, d, 0., 0., 0., 0., 1., 0., e, f, 0., 1.);
+    float a = u_selfTransform[0], b = u_selfTransform[1], c = u_selfTransform[2], d = u_selfTransform[3];
+    return mat4(a, b, 0., 0., c, d, 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.);
 }
 
 // lighting shader
