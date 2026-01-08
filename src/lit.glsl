@@ -42,9 +42,9 @@ mat2 rotation(float angle) {
     return mat2(c, -s, s, c);
 }
 
-mat4 transform4() {
+mat2 transform4() {
     float a = u_selfTransform[0], b = u_selfTransform[1], c = u_selfTransform[2], d = u_selfTransform[3];
-    return mat4(a, b, 0., 0., c, d, 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.);
+    return mat2(a, b, c, d);
 }
 
 // lighting shader
@@ -53,7 +53,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     bool hasNMap = u_useNormalMap > 0.;
     vec3 normal = hasNMap ? texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
     if(hasNMap)
-        normal = vec3((transform4() * vec4(normal.xy, 0, 0.)).xy, normal.z);
+        normal = vec3(transform4() * normal.xy, normal.z);
     for(int i = 0; i < MAX_LIGHTS; i++) {
         if(i >= int(u_lights))
             break;

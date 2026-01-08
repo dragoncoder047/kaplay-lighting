@@ -214,6 +214,7 @@ k.scene("main", () => {
         k.sprite("steel"),
         k.anchor("center"),
         k.litShader("litSprite", k.getNormalMapInput("steel", "steel-nm")),
+        k.skew(0, 0),
     ])
 
     title(nmBlock, "Normal Map");
@@ -240,6 +241,10 @@ k.scene("main", () => {
 
     tagsBlock.onUpdate(() => {
         tagsBlock.angle += 200 * k.dt();
+    })
+
+    nmBlock.onUpdate(() => {
+        nmBlock.skew = k.vec2(k.wave(-20, 20, k.time() * 3), 0);
     })
 
     title(tagsBlock, "Tags");
