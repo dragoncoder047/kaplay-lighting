@@ -33,12 +33,8 @@ vec2 normalizeCoords(vec2 pos) {
     return pos;
 }
 
-float map(float n, float min1, float max1, float min2, float max2) {
+vec2 map(vec2 n, vec2 min1, vec2 max1, vec2 min2, vec2 max2) {
     return ((n - min1) / (max1 - min1)) * (max2 - min2) + min2;
-}
-
-vec2 map(vec2 n, vec2 min, vec2 max, vec2 min2, vec2 max2) {
-    return vec2(map(n.x, min.x, max.x, min2.x, max2.x), map(n.y, min.y, max.y, min2.y, max2.y));
 }
 
 mat2 rotation(float angle) {
