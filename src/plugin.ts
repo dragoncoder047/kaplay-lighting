@@ -360,8 +360,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     u_time: k.time(),
                     u_width: k.width(),
                     u_height: k.height(),
-                    // convert to Mat4 from Mat23
-                    u_camTransform: k.getCamTransform(),
                     u_globalLightColor: globalColor,
                     u_globalLightIntensity: globalIntensity,
                     u_lightStrength: lightStrength,
