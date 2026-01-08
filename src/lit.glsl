@@ -84,7 +84,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
             float diffuse = hasNMap ? max(dot(normal, normalize(vec3(pixelVector, 0.))), 0.) : 1.;
 
             if(u_lightType[i] > 0.) {
-            // Spot light (flashlight beam)
+                // Spot light (flashlight beam)
                 float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
 
                 vec2 rPV = rotation(dir) * pixelVector;
@@ -98,7 +98,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
 
                 totalLight += lightColor * beamFalloff * distanceFalloff * diffuse * lightStrength;
             } else {
-            // Point light
+                // Point light
 
                 totalLight += lightColor * distanceFalloff * diffuse * lightStrength;
             }
