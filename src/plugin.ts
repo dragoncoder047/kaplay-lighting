@@ -349,8 +349,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     lightWidthMin.length =
                     lightWidthMax.length = j;
 
-                // TODO: this works, but is really bad, since it forces a flush on basically
-                // every object. Since the uniforms changed.
                 const t = this.transform;
                 selfTransform[0] = t.a;
                 selfTransform[1] = t.b;
