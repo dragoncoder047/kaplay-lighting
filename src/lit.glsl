@@ -13,10 +13,10 @@ uniform float u_lightNearRadius[MAX_LIGHTS];
 uniform float u_lightFarRadius[MAX_LIGHTS];
 uniform vec2 u_lightPos[MAX_LIGHTS];
 uniform vec3 u_lightColor[MAX_LIGHTS];
-uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for directional lights)
+uniform float u_direction[MAX_LIGHTS]; // beam direction angle in radians (for spot and directional lights)
 uniform float u_lightType[MAX_LIGHTS]; // 1 = spot light, 0 = point light, 2 = directional light
-uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for directional lights
-uniform float u_widthMin[MAX_LIGHTS];
+uniform float u_lightSpread[MAX_LIGHTS]; // beam spread angle for spot lights
+uniform float u_widthMin[MAX_LIGHTS]; // width of margin for spot lights
 uniform float u_widthMax[MAX_LIGHTS];
 uniform float u_lights;
 
@@ -26,7 +26,7 @@ uniform vec2 u_nm_max;
 uniform vec2 u_tex_min;
 uniform vec2 u_tex_max;
 uniform float u_useNormalMap;
-uniform float u_selfTransform[4]; // Use 6 floats and convert the mat2x3 to a mat4 in the shader
+uniform float u_selfTransform[4]; // Use 4 floats and convert the mat2 to a mat4 in the shader
 
 vec2 normalizeCoords(vec2 pos) {
     pos.x *= u_width / u_height;
