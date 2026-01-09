@@ -306,7 +306,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 const global = getGlobalLight();
                 const globalColor = global.color;
                 const globalIntensity = global.intensity;
-                // light color normalized to [0, 1]
                 const lights = Light.lights;
 
                 let j = 0;
@@ -324,7 +323,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                         spread,
                         widthMin,
                         widthMax,
-                    } = Light.lights[i]!;
+                    } = lights[i]!;
                     if (includeTags.length > 0 && !this.is(includeTags, "or")) continue;
                     if (excludeTags.length > 0 && this.is(excludeTags, "or")) continue;
                     lightType[j] = type === "spot" ? 1 : type === "directional" ? 2 : 0;
