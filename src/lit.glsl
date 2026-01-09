@@ -53,7 +53,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
     bool hasNMap = u_useNormalMap > 0.;
     vec3 normal = hasNMap ? texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
     if(hasNMap)
-        normal = vec3(transform4() * normal.xy, normal.z);
+        normal = normalize(vec3(transform4() * normal.xy, normal.z));
     for(int i = 0; i < MAX_LIGHTS; i++) {
         if(i >= int(u_lights))
             break;
