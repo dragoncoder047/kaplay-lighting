@@ -25,6 +25,7 @@ uniform vec2 u_nm_min;
 uniform vec2 u_nm_max;
 uniform vec2 u_tex_min;
 uniform vec2 u_tex_max;
+uniform sampler2D u_nm_tex;
 uniform float u_useNormalMap;
 uniform float u_selfTransform[4]; // Use 4 floats and convert the mat2 to a mat4 in the shader
 
@@ -48,10 +49,10 @@ mat2 transform4() {
 }
 
 // lighting shader
-vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D tex) {
+vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D _) {
     vec3 totalLight = u_globalLightColor * u_globalLightIntensity / 255.;
     bool hasNMap = u_useNormalMap > 0.;
-    vec3 normal = hasNMap ? texture2D(tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
+    vec3 normal = hasNMap ? texture2D(u_nm_tex, map(uv, u_tex_min, u_tex_max, u_nm_min, u_nm_max)).rgb * 2. - 1. : vec3(0., 0., 1.);
     if(hasNMap)
         normal = normalize(vec3(transform4() * normal.xy, normal.z));
     for(int i = 0; i < MAX_LIGHTS; i++) {

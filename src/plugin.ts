@@ -1,4 +1,4 @@
-import type { Comp, GameObj, PosComp, RotateComp, ShaderComp, ShaderData, Tag, Uniform } from "kaplay";
+import type { Comp, GameObj, PosComp, RotateComp, ShaderComp, ShaderData, Tag, Texture, Uniform } from "kaplay";
 import { Asset, Color, KAPLAYCtx, SpriteData, Vec2 } from "kaplay";
 import lightingOnly from "./lighting-only.glsl";
 import litShaderTemplate from "./lit.glsl";
@@ -9,7 +9,8 @@ const litShaderTemplateAfter = litShaderTemplate.slice(frag_i);
 
 export type UVBounds = {
     min: Vec2,
-    max: Vec2
+    max: Vec2,
+    tex: Texture,
 }
 
 export type GlobalLight = {
@@ -219,7 +220,8 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
         const q = sprite.data.frames[frame]!;
         return {
             min: k.vec2(q.x, q.y),
-            max: k.vec2(q.x + q.w, q.y + q.h)
+            max: k.vec2(q.x + q.w, q.y + q.h),
+            tex: sprite.data.tex,
         }
     }
 
@@ -293,6 +295,7 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                         u_nm_max: this.nm.max,
                         u_tex_min: this.tex.min,
                         u_tex_max: this.tex.max,
+                        u_nm_tex: this.nm.tex,
                         u_useNormalMap: 1,
                     });
                 } else {
