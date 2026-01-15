@@ -101,7 +101,7 @@ k.scene("main", () => {
             k.sprite("sb"),
             k.scale(2),
             k.anchor("botleft"),
-            k.litShader("litSprite", k.getNormalMapInput("sb", "sb-nm")),
+            k.litShader("litSprite", { nmSprite: "sb-nm" }),
         ])
     }
 
@@ -117,7 +117,7 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tl", "sb-tl-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tl-nm" }),
             ],
             "-": () => [
                 k.pos(),
@@ -125,7 +125,7 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tp", "sb-tp-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tp-nm" }),
             ],
             "]": () => [
                 k.pos(),
@@ -133,7 +133,7 @@ k.scene("main", () => {
                 k.area(),
                 k.body({ isStatic: true }),
                 k.scale(2),
-                k.litShader("litSprite", k.getNormalMapInput("sb-tr", "sb-tr-nm")),
+                k.litShader("litSprite", { nmSprite: "sb-tr-nm" }),
             ]
         }
     })
@@ -145,7 +145,7 @@ k.scene("main", () => {
             k.pos(pos),
             k.sprite("torch"),
             k.anchor("bot"),
-            k.litShader("litSprite", k.getNormalMapInput("torch", "torch-nm")),
+            k.litShader("litSprite", { nmSprite: "torch-nm" }),
         ])
 
         const torchlight = torch.add([
@@ -213,7 +213,7 @@ k.scene("main", () => {
         k.pos(3 * k.width() / 5, k.height() / 2),
         k.sprite("steel"),
         k.anchor("center"),
-        k.litShader("litSprite", k.getNormalMapInput("steel", "steel-nm")),
+        k.litShader("litSprite", { nmSprite: "steel-nm" }),
         k.skew(0, 0),
     ])
 
@@ -224,7 +224,7 @@ k.scene("main", () => {
         k.pos(2 * k.width() / 5, k.height() / 2),
         k.sprite("steel"),
         k.anchor("center"),
-        k.litShader("test", k.getNormalMapInput("steel", "steel-nm")),
+        k.litShader("test", { nmSprite: "steel-nm" }),
     ])
 
     title(bothBlock, "Shader\n&\nNormal Map")
@@ -235,7 +235,7 @@ k.scene("main", () => {
         k.sprite("steel"),
         k.anchor("center"),
         k.rotate(),
-        k.litShader("litSprite", k.getNormalMapInput("steel", "steel-nm")),
+        k.litShader("litSprite", { nmSprite: "steel-nm" }),
         "torchLit"
     ])
 
