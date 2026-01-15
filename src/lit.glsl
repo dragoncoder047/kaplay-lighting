@@ -1,7 +1,6 @@
-
-// generic kaplay information
-uniform float u_width;
-uniform float u_height;
+// these two kaplay gives on its own
+uniform highp float width;
+uniform highp float height;
 
 // global light
 uniform vec3 u_globalLightColor;
@@ -30,7 +29,7 @@ uniform float u_useNormalMap;
 uniform float u_selfTransform[4]; // Use 4 floats and convert the mat2 to a mat4 in the shader
 
 vec2 normalizeCoords(vec2 pos) {
-    pos.x *= u_width / u_height;
+    pos.x *= width / height;
     return pos;
 }
 
@@ -60,9 +59,9 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D _) {
             break;
 
         float lightStrength = u_lightStrength[i];
-        float near = u_lightNearRadius[i] / u_height;
-        float far = u_lightFarRadius[i] / u_height;
-        vec2 lightPos = u_lightPos[i] / vec2(u_width, u_height);
+        float near = u_lightNearRadius[i] / height;
+        float far = u_lightFarRadius[i] / height;
+        vec2 lightPos = u_lightPos[i] / vec2(width, height);
         vec3 lightColor = u_lightColor[i] / 255.;
 
         if(u_lightType[i] > 1.) {
@@ -70,8 +69,8 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D _) {
             float diffuse = hasNMap ? max((rotation(u_direction[i]) * normal.xy).x, 0.) : 1.;
             totalLight += lightColor * diffuse * lightStrength;
         } else {
-            lightPos.x *= (u_width / u_height);
-            vec2 nPos = normalizeCoords(pos) / vec2(u_width, u_height);
+            lightPos.x *= (width / height);
+            vec2 nPos = normalizeCoords(pos) / vec2(width, height);
             float dist = distance(lightPos, nPos);
             float distanceFalloff = near == far ? (dist > far ? 0. : 1.) : 1. - smoothstep(near, far, dist);
             if(distanceFalloff <= 0.)
@@ -82,7 +81,7 @@ vec3 calculateLighting(vec2 pos, vec2 uv, sampler2D _) {
 
             if(u_lightType[i] > 0.) {
                 // Spot light (flashlight beam)
-                float dir = u_direction[i], wm = u_widthMin[i] / u_height / 2., wx = u_widthMax[i] / u_height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
+                float dir = u_direction[i], wm = u_widthMin[i] / height / 2., wx = u_widthMax[i] / height / 2., sh = u_lightSpread[i] / 2., beamFalloff = 1.;
 
                 vec2 rPV = rotation(dir) * pixelVector;
                 float localAngle = atan(rPV.y, rPV.x);

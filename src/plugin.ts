@@ -113,7 +113,7 @@ export interface KAPLAYLightingPlugin {
     GLOBAL_LIGHT: GlobalLight;
     loadLitShader(name: string, vert: string | null, litFrag: string | null): Asset<ShaderData>;
     getUVBounds(spriteName: string, frame?: number): UVBounds | null;
-    getNormalMapInput(spriteTexName: string, spriteNMName: string, options?: { rot?: number, uniforms?: Record<string, any> }): LitShaderOpt;
+    getNormalMapInput(spriteTexName: string, spriteNMName: string, options?: LitShaderOpt): LitShaderOpt;
     setGlobalLight(options: { color?: Color, intensity?: number }): GlobalLight;
     getGlobalLight(): GlobalLight;
     litShader(shaderName: string, opt?: LitShaderOpt): LitShaderComp;
@@ -287,10 +287,11 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
             tex: opt.tex ?? null,
             nm: opt.nm ?? null,
             rot: opt.rot ?? 0,
-            add(this: GameObj) {
+            add(this: GameObj<LitShaderComp | ShaderComp>) {
+                this.use(k.shader(shaderName, {}));
                 // apply normal maps
                 if (this.nm != null && this.tex != null) {
-                    Object.assign(this.uniforms, {
+                    Object.assign(this.uniform!, {
                         u_nm_min: this.nm.min,
                         u_nm_max: this.nm.max,
                         u_tex_min: this.tex.min,
@@ -299,9 +300,8 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                         u_useNormalMap: 1,
                     });
                 } else {
-                    this.uniforms.u_useNormalMap = 0;
+                    this.uniform!.u_useNormalMap = 0;
                 }
-                this.use(k.shader(shaderName, {}));
             },
 
             update(this: GameObj<ShaderComp | LitShaderComp | RotateComp>) {
@@ -360,8 +360,6 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                 // attach these uniforms to the custom uniforms given by `litShader()` component
                 Object.assign(this.uniform!, {
                     u_time: k.time(),
-                    u_width: k.width(),
-                    u_height: k.height(),
                     u_globalLightColor: globalColor,
                     u_globalLightIntensity: globalIntensity,
                     u_lightStrength: lightStrength,
