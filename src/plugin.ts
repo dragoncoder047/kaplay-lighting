@@ -388,9 +388,8 @@ export default function kaplayLighting(k: KAPLAYCtx): KAPLAYLightingPlugin {
                     opt.excludeTags,
                 );
             },
-            update(this: GameObj<PosComp | LightComp>) {
+            draw(this: GameObj<PosComp | LightComp>) {
                 const t = this.transform, l = this.light;
-                if (!l) return;
                 l.pos = t.getTranslation();
                 l.direction = t.getRotation();
             },
